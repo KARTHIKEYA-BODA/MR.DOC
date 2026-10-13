@@ -793,7 +793,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(PUBLIC_ROOT)
-    host = os.environ.get("HOST", "127.0.0.1")
+    host = os.environ.get("HOST", "0.0.0.0")
     tts_status = "ElevenLabs Active" if ELEVEN_KEY else "Browser Speech"
     print(f"Mr.Doc AI Health Copilot running at http://localhost:{PORT}")
     print(f"Features: Multimodal OCR | FHIR Export | Multi-Language | Voice ({tts_status})")
