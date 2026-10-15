@@ -201,23 +201,8 @@ function setExp(k, hold) {
   if ($("#sb")) $("#sb").dataset.mode = e.m;
   if (e.f) { showH(null); showB(e.f); } else { showH(e.h); showB(e.b); }
   if (k === "speak") {
-    const H = ["say_a", "say_b", "say_c", "say_a", "happy", "say_b", "say_c", "happy"];
-    let n = 0; showB("b_open");
-    const st = () => { showH(H[n++ % H.length]); talkT = setTimeout(st, 130); };
-    const B = ["b_open", "b_wide", "b_open"]; let m = 0;
-    const sg = () => { gestT = setTimeout(() => { if (cur0 === "speak") { showB(B[++m % B.length]); sg(); } }, 3200); };
-    st(); sg();
-  }
-  if (k === "happy") {
-    const g = () => {
-      gestT = setTimeout(() => {
-        if (cur0 === "happy") {
-          showB("b_open"); showH("say_a");
-          gestT = setTimeout(() => { if (cur0 === "happy") { showB("b_down"); showH("happy"); } g(); }, 1600);
-        } else g();
-      }, 7000 + Math.random() * 4000);
-    };
-    g();
+    showH("happy");
+    showB("b_open");
   }
   if (hold) expT = setTimeout(() => setExp("happy"), hold);
 }
@@ -1172,11 +1157,59 @@ function downloadJson(filename, obj) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 let curAudio = null, speechActive = false, speechDone = null;
+let mouthSyncFrame = 0, mouthAudioContext = null;
+function stopMouthSync() {
+  if (mouthSyncFrame) cancelAnimationFrame(mouthSyncFrame);
+  mouthSyncFrame = 0;
+  if (mouthAudioContext) mouthAudioContext.close().catch(() => {});
+  mouthAudioContext = null;
+}
+function syncMouthToAudio(audioElement, encodedAudio) {
+  stopMouthSync();
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    mouthAudioContext = new AudioContextClass();
+    const context = mouthAudioContext;
+    const bytes = Uint8Array.from(atob(encodedAudio), character => character.charCodeAt(0));
+    context.decodeAudioData(bytes.buffer).then(buffer => {
+      if (mouthAudioContext !== context || !speechActive) return;
+      const samples = buffer.getChannelData(0);
+      const hop = Math.max(1, Math.round(buffer.sampleRate * 0.025));
+      const envelope = new Float32Array(Math.ceil(samples.length / hop));
+      for (let frame = 0; frame < envelope.length; frame++) {
+        const start = frame * hop, end = Math.min(samples.length, start + hop);
+        let energy = 0;
+        for (let i = start; i < end; i++) energy += samples[i] * samples[i];
+        envelope[frame] = Math.sqrt(energy / Math.max(1, end - start));
+      }
+      context.close().catch(() => {});
+      mouthAudioContext = null;
+      let level = 0, candidate = "happy", candidateSince = performance.now();
+      const update = now => {
+        if (!speechActive || cur0 !== "speak") return;
+        const frame = Math.min(envelope.length - 1, Math.floor(audioElement.currentTime / 0.025));
+        const amplitude = envelope[Math.max(0, frame)] || 0;
+        level += (amplitude - level) * (amplitude > level ? 0.42 : 0.18);
+        const next = level > 0.09 ? "say_a" : level > 0.035 ? "say_b" : "happy";
+        if (next !== candidate) { candidate = next; candidateSince = now; }
+        else if (now - candidateSince > 55 && curH !== candidate) showH(candidate);
+        mouthSyncFrame = requestAnimationFrame(update);
+      };
+      mouthSyncFrame = requestAnimationFrame(update);
+    }).catch(() => {
+      if (mouthAudioContext === context) stopMouthSync();
+    });
+  } catch (_) {
+    stopMouthSync();
+  }
+}
 const speechLanguage = () => ({ en: "en-IN", hi: "hi-IN", te: "te-IN", ta: "ta-IN" }[S.lang]);
 function updateSpeechUI() {
   $("#stop-speech").hidden = !speechActive;
 }
 function stopSpeech() {
+  stopMouthSync();
   if (curAudio) { curAudio.pause(); curAudio.onended = curAudio.onerror = null; curAudio = null; }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   if (speechDone) speechDone();
@@ -1200,6 +1233,7 @@ function speakText(text, audio = "", allowBrowserVoice = true) {
     function finish() {
       if (finished) return;
       finished = true; clearTimeout(timer);
+      stopMouthSync();
       if (speechDone === finish) {
         if (curAudio) { curAudio.onended = curAudio.onerror = null; curAudio.pause(); }
         curAudio = null; speechDone = null; speechActive = false; window._curUtt = null;
@@ -1211,11 +1245,13 @@ function speakText(text, audio = "", allowBrowserVoice = true) {
     speechDone = finish;
     if (audio) {
       curAudio = new Audio("data:audio/wav;base64," + audio);
+      syncMouthToAudio(curAudio, audio);
       curAudio.onended = finish; curAudio.onerror = () => { finish(); notify("Audio could not be played.", true); };
       curAudio.play().catch(() => { finish(); notify("Audio could not start. You can still read the reply.", true); });
     } else {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = speechLanguage(); utterance.rate = 1;
+      utterance.onboundary = () => { if (cur0 === "speak") { showH("say_a"); clearTimeout(talkT); talkT = setTimeout(() => { if (cur0 === "speak") showH("happy"); }, 150); } };
       const matchingVoice = speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith(S.lang));
       if (matchingVoice) utterance.voice = matchingVoice;
       window._curUtt = utterance;

@@ -397,7 +397,7 @@ input:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   Character Stagebox & Animations (100% PRESERVED & UNCHANGED)
+   Character Stagebox & Subtle Character Motion
    ========================================================================== */
 #view-chat {
   flex-direction: row;
@@ -434,66 +434,66 @@ input:focus, textarea:focus {
 
 #bd img {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: 0; transition: opacity .25s ease-in-out; pointer-events: none;
+  opacity: 0; transition: opacity .18s ease-in-out; pointer-events: none;
 }
 #bd img.on { opacity: 1; }
 
 #hd img {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: 0; transition: opacity .03s linear; pointer-events: none;
+  opacity: 0; transition: opacity .075s ease-out; pointer-events: none;
 }
 #hd img.on { opacity: 1; }
 
-[data-mode=idle] .char { animation: breathe 4s ease-in-out infinite; }
-[data-mode=idle] #hw { animation: headbob 3.6s ease-in-out infinite; }
-[data-mode=cheer] .char { animation: cheer 1.8s ease-in-out infinite; }
-[data-mode=cheer] #hw { animation: headcheer 1.8s ease-in-out infinite; }
-[data-mode=look] .char { animation: lookbody 2.4s ease-in-out infinite; }
-[data-mode=look] #hw { animation: headlook 2.4s ease-in-out infinite; }
-[data-mode=think] .char { animation: ponder 3s ease-in-out infinite; }
-[data-mode=think] #hw { animation: headthink 3s ease-in-out infinite; }
-[data-mode=speak] .char { animation: talkmove 1s ease-in-out infinite; }
-[data-mode=speak] #hw { animation: headtalk .44s ease-in-out infinite alternate; }
+[data-mode=idle] .char { animation: breathe 5.2s ease-in-out infinite; }
+[data-mode=idle] #hw { animation: headbob 5.8s ease-in-out infinite; }
+[data-mode=cheer] .char { animation: cheer 2.8s ease-in-out infinite; }
+[data-mode=cheer] #hw { animation: headcheer 2.8s ease-in-out infinite; }
+[data-mode=look] .char { animation: lookbody 2.8s ease-in-out infinite; }
+[data-mode=look] #hw { animation: headlook 2.8s ease-in-out infinite; }
+[data-mode=think] .char { animation: ponder 3.8s ease-in-out infinite; }
+[data-mode=think] #hw { animation: headthink 3.8s ease-in-out infinite; }
+[data-mode=speak] .char { animation: talkmove 3.6s ease-in-out infinite; }
+[data-mode=speak] #hw { animation: headtalk 2.4s ease-in-out infinite; }
 
 @keyframes breathe {
   0%, 100% { transform: translateY(0) scale(1, 1); }
-  50% { transform: translateY(-2.5px) scale(1.006, 1.012); }
+  50% { transform: translateY(-1.2px) scale(1.002, 1.004); }
 }
 @keyframes headbob {
   0%, 100% { transform: rotate(0) translateY(0); }
-  50% { transform: rotate(1deg) translateY(-1.5px); }
+  50% { transform: rotate(.35deg) translateY(-.5px); }
 }
 @keyframes cheer {
   0%, 100% { transform: translateY(0) scale(1, 1); }
-  50% { transform: translateY(-6px) scale(1.01, 1.015); }
+  50% { transform: translateY(-2px) scale(1.003, 1.005); }
 }
 @keyframes headcheer {
   0%, 100% { transform: rotate(0) translateY(0); }
-  50% { transform: rotate(1.5deg) translateY(-2px); }
+  50% { transform: rotate(.7deg) translateY(-.8px); }
 }
 @keyframes lookbody {
-  0%, 100% { transform: translate(5px, 1px) rotate(0.6deg); }
-  50% { transform: translate(7px, 3px) rotate(1deg); }
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  50% { transform: translate(1.2px, .5px) rotate(.18deg); }
 }
 @keyframes headlook {
-  0%, 100% { transform: rotate(2deg) translateY(2px); }
-  50% { transform: rotate(3.2deg) translateY(4px); }
+  0%, 100% { transform: rotate(0) translateY(0); }
+  50% { transform: rotate(.65deg) translateY(.6px); }
 }
 @keyframes ponder {
   0%, 100% { transform: translateY(0) rotate(0); }
-  50% { transform: translateY(-4px) rotate(-1.2deg) scale(1.006, 1.01); }
+  50% { transform: translateY(-1.2px) rotate(-.25deg) scale(1.002, 1.003); }
 }
 @keyframes headthink {
-  0%, 100% { transform: rotate(-2.5deg) translateY(-1px); }
-  50% { transform: rotate(1.8deg) translateY(-3.5px); }
+  0%, 100% { transform: rotate(-.35deg) translateY(0); }
+  50% { transform: rotate(.45deg) translateY(-.8px); }
 }
 @keyframes talkmove {
-  0%, 100% { transform: translateY(0) rotate(-0.5deg); }
-  50% { transform: translateY(-3.5px) rotate(0.6deg); }
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-.9px) rotate(.12deg); }
 }
 @keyframes headtalk {
-  from { transform: rotate(-1.5deg) translateY(0); }
-  to { transform: rotate(1.8deg) translateY(-2.5px); }
+  0%, 100% { transform: rotate(-.2deg) translateY(0); }
+  50% { transform: rotate(.25deg) translateY(-.5px); }
 }
 
 .bubble {
