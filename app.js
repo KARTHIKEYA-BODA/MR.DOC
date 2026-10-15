@@ -1210,7 +1210,7 @@ function speakText(text, audio = "", allowBrowserVoice = true) {
     }
     speechDone = finish;
     if (audio) {
-      curAudio = new Audio("data:audio/mp3;base64," + audio);
+      curAudio = new Audio("data:audio/wav;base64," + audio);
       curAudio.onended = finish; curAudio.onerror = () => { finish(); notify("Audio could not be played.", true); };
       curAudio.play().catch(() => { finish(); notify("Audio could not start. You can still read the reply.", true); });
     } else {

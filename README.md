@@ -15,7 +15,7 @@
     <img src="https://img.shields.io/badge/Zero_Dependencies-Standard_Library-success?style=flat" alt="Zero Dependencies">
     <img src="https://img.shields.io/badge/AI_Vision-Google_Gemini-4285F4?style=flat&logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/AI_Model-Anthropic_Claude-D97706?style=flat&logo=anthropic" alt="Claude">
-    <img src="https://img.shields.io/badge/Voice-ElevenLabs_TTS-000000?style=flat" alt="ElevenLabs">
+    <img src="https://img.shields.io/badge/Voice-Gemini_TTS-4285F4?style=flat&logo=google" alt="Gemini TTS">
     <img src="https://img.shields.io/badge/Standard-FHIR_JSON-blue?style=flat" alt="FHIR">
     <img src="https://img.shields.io/badge/Languages-EN_|_HI_|_TE_|_TA-orange?style=flat" alt="Languages">
   </p>
@@ -72,7 +72,7 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 |    is back up to safe levels!    |   📅 Date: 12-Oct-2026            | 👤 Patient: Anil Kumar (41M)  |
 |    Drink plenty of fluids."      |  -----------------------------------------------------------  |
 |                                  |   🧪 Lab Values & Abnormal Markers:                           |
-|   [ 🔊 ElevenLabs / Web Voice ]  |      • Platelet Count: 112,000 /mcL  [ ⚠️ LOW - Recovering ]  |
+|   [ 🔊 Gemini / Web Voice ]  |      • Platelet Count: 112,000 /mcL  [ ⚠️ LOW - Recovering ]  |
 |                                  |      • Hemoglobin:     14.2 g/dL     [ ✅ NORMAL ]            |
 |   💬 Patient Chat Box:           |      • WBC Count:      5,400 /mcL    [ ✅ NORMAL ]            |
 |   +--------------------------+   |  -----------------------------------------------------------  |
@@ -104,7 +104,7 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 
 ### 3. 🗣️ Multilingual Voice Interaction
 - Supports **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)** across all explanations and chat.
-- High-fidelity natural voice synthesis via **ElevenLabs AI Voice**, with automated fallback to the browser's native **Web Speech API** if offline or without keys.
+- Natural voice synthesis via **Gemini TTS**, with automated fallback to the browser's native **Web Speech API** if speech generation is unavailable.
 
 ### 4. 🏥 Standards-Compliant FHIR Export
 - Generates locally-formatted **HL7 FHIR JSON** resources (`DiagnosticReport`, `MedicationRequest`, `Observation`).
@@ -125,11 +125,11 @@ flowchart TD
     
     C -->|Has GEMINI_API_KEY?| D[Google Gemini Vision API]
     C -->|Has ANTHROPIC_API_KEY?| E[Anthropic Claude Vision API]
-    C -->|Has ELEVENLABS_API_KEY?| F[ElevenLabs Voice API]
+    C -->|Has GEMINI_API_KEY?| F[Gemini TTS API]
     
     D -->|Structured JSON Response| C
     E -->|Structured JSON Response| C
-    F -->|MP3 Audio Stream| C
+    F -->|WAV Audio| C
     
     C -->|Unified Clean JSON + Audio| B
     B -->|Update Sprite & Expressions| G[Animated Chibi Doctor]
@@ -141,7 +141,7 @@ flowchart TD
 1. **Input:** You upload a medical document or ask a health question in chat.
 2. **Backend Processing:** `server.py` validates the payload, verifies file integrity, and routes the document to the configured LLM vision model (Gemini or Claude).
 3. **Structured Extraction:** The AI extracts test parameters, flags out-of-range biomarkers, translates findings into the chosen regional language, and formulates clear patient instructions.
-4. **Speech & Animation:** The server generates voice audio via ElevenLabs (or triggers browser speech). The avatar dynamically animates its face and gestures while delivering the reply.
+4. **Speech & Animation:** The server generates voice audio via Gemini TTS (or triggers browser speech). The avatar dynamically animates its face and gestures while delivering the reply.
 5. **Dashboard & Storage:** Results are displayed in the dashboard and saved locally in `localStorage`.
 
 ---
@@ -162,7 +162,6 @@ The entire backend is built using **pure Python standard library modules**:
 - *(Optional)* API Keys for AI features:
   - **Google Gemini API Key** (Free tier available from [Google AI Studio](https://aistudio.google.com/))
   - **Anthropic API Key** (from [Anthropic Console](https://console.anthropic.com/))
-  - **ElevenLabs API Key** (from [ElevenLabs](https://elevenlabs.io/) for realistic voice speech)
 
 ---
 
@@ -226,10 +225,10 @@ The `.env` file accepts the following parameters:
 | :--- | :--- | :--- |
 | `GEMINI_API_KEY` | *(None)* | Google Gemini API key used for multimodal document OCR and chat. |
 | `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Model identifier for Gemini (`gemini-3.1-flash-lite`, `gemini-2.5-flash`, etc.). |
+| `GEMINI_TTS_MODEL` | `gemini-3.8-flash-tts` | Gemini TTS model for spoken replies. |
+| `GEMINI_TTS_VOICE` | `Tavi` | Gemini TTS voice name for spoken replies. |
 | `ANTHROPIC_API_KEY` | *(None)* | Anthropic Claude API key (used if Gemini key is omitted). |
 | `CARELY_MODEL` | `claude-sonnet-5-5` | Model identifier for Claude (`claude-sonnet-5-5`, `claude-3-5-sonnet`, etc.). |
-| `ELEVENLABS_API_KEY` | *(None)* | ElevenLabs API key for lifelike AI voice synthesis. |
-| `ELEVENLABS_VOICE_ID`| `2NK8h12Jwt5RNkwGLkVa`| Voice ID for the character (defaults to friendly voice Reyaansh). |
 | `PORT` | `8000` | Local port number for the HTTP server. |
 
 ---

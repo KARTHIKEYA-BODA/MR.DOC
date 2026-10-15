@@ -4,7 +4,7 @@ Features:
 - Plain-Language Summaries & Explanations of Abnormal Test Values
 - Multi-Language Support (English, Hindi, Telugu, Tamil)
 - Local FHIR-formatted demo export (no ABDM / ABHA connection)
-- Character Chat & ElevenLabs AI Speech Synthesis
+- Character Chat & Gemini AI Speech Synthesis
 """
 import base64
 import binascii
@@ -38,8 +38,8 @@ GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("CARELY_MODEL", "claude-sonnet-5-5")
-ELEVEN_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-ELEVEN_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "2NK8h12Jwt5RNkwGLkVa")
+GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.8-flash-tts")
+GEMINI_TTS_VOICE = os.environ.get("GEMINI_TTS_VOICE", "Tavi")
 PORT = int(os.environ.get("PORT", "8000"))
 
 SYSTEM_PROMPT = (
@@ -124,33 +124,54 @@ def call_anthropic(prompt: str) -> str:
     return clean_reply(full)
 
 
-def call_elevenlabs(text: str) -> str:
-    if not ELEVEN_KEY or not ELEVEN_VOICE_ID:
+def call_gemini_tts(text: str) -> str:
+    if not GEMINI_KEY:
         return ""
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVEN_VOICE_ID}"
-    headers = {
-        "xi-api-key": ELEVEN_KEY,
-        "Content-Type": "application/json",
-    }
-    data = json.dumps({
-        "text": text,
-        "model_id": "eleven_turbo_v2_5",
-        "voice_settings": {
-            "stability": 0.7,
-            "similarity_boost": 0.8,
+    url = "https://generativelanguage.googleapis.com/v1beta/interactions"
+    payload = {
+        "model": GEMINI_TTS_MODEL,
+        "input": [{
+            "type": "user_input",
+            "content": [{
+                "type": "text",
+                "text": text,
+                "annotations": [{
+                    "type": "speech_metadata",
+                    "style": "Warm, calm, natural and reassuring. Clear pronunciation, steady conversational pace, gentle expression, not theatrical.",
+                }],
+            }],
+        }],
+        "response_format": {"type": "audio"},
+        "generation_config": {
+            "speech_config": [{"voice": GEMINI_TTS_VOICE}],
         },
-    }).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers=headers)
+        # Avoid retaining health-related speech interactions in the API's interaction history.
+        "store": False,
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "x-goog-api-key": GEMINI_KEY,
+            "Content-Type": "application/json",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
-            return base64.b64encode(r.read()).decode("utf-8")
+            result = json.loads(r.read())
+        for step in result.get("steps", []):
+            if step.get("type") != "model_output":
+                continue
+            for item in step.get("content", []):
+                if item.get("type") == "audio" and item.get("data"):
+                    return item["data"]
+        print("[Gemini TTS] The API response did not contain audio.", flush=True)
     except urllib.error.HTTPError as e:
-        # Log ElevenLabs' response body so the precise API error appears in Render Logs.
-        # Do not log the request headers (which contain the secret API key) or user text.
+        # Log provider errors, never request headers (which contain the secret API key).
         error_body = e.read().decode("utf-8", errors="replace")[:2000]
-        print(f"[ElevenLabs] TTS request failed (HTTP {e.code}): {error_body}")
+        print(f"[Gemini TTS] Request failed (HTTP {e.code}): {error_body}", flush=True)
     except Exception as e:
-        print(f"[ElevenLabs] Configured voice failed: {e}")
+        print(f"[Gemini TTS] Request failed: {e}", flush=True)
     return ""
 # ---------------------------------------------------------------------------
 # ABDM FHIR R4 Bundle Builder (National Health Authority Standard)
@@ -741,7 +762,7 @@ class Handler(SimpleHTTPRequestHandler):
                     raise RuntimeError("AI chat is not configured on this server. Please add an API key.")
                 if not text:
                     raise RuntimeError("The chat service returned an empty response. Please try again.")
-                audio = call_elevenlabs(text) if ELEVEN_KEY and data.get("voice", True) else ""
+                audio = call_gemini_tts(text) if GEMINI_KEY and data.get("voice", True) else ""
                 return self.reply(200, {"text": text, "audio": audio, "fixedVoice": bool(audio)})
             if route == "/api/analyze-record":
                 sample_id = data.get("sampleId")
@@ -763,7 +784,7 @@ class Handler(SimpleHTTPRequestHandler):
                         if len(base64.b64decode(processed)) > 4 * 1024 * 1024:
                             raise ValueError("The enhanced image is too large. Choose a smaller photo.")
                     record = analyze_uploaded_image(encoded, mime_type, language, processed if mime_type.startswith("image/") else "")
-                audio = call_elevenlabs(record["summary"]) if ELEVEN_KEY and data.get("voice", True) else ""
+                audio = call_gemini_tts(record["summary"]) if GEMINI_KEY and data.get("voice", True) else ""
                 return self.reply(200, {"success": True, "record": record, "audio": audio})
             # This endpoint remains an explicitly labelled local demonstration.
             return self.reply(200, {
@@ -797,7 +818,7 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     os.chdir(PUBLIC_ROOT)
     host = os.environ.get("HOST", "0.0.0.0")
-    tts_status = "ElevenLabs Active" if ELEVEN_KEY else "Browser Speech"
+    tts_status = f"Gemini TTS ({GEMINI_TTS_VOICE})" if GEMINI_KEY else "Browser Speech"
     print(f"Mr.Doc AI Health Copilot running at http://localhost:{PORT}")
     print(f"Features: Multimodal OCR | FHIR Export | Multi-Language | Voice ({tts_status})")
     http_server = ThreadingHTTPServer((host, PORT), Handler)
