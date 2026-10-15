@@ -739,7 +739,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not text:
                     raise RuntimeError("The chat service returned an empty response. Please try again.")
                 audio = call_elevenlabs(text) if ELEVEN_KEY and data.get("voice", True) else ""
-                return self.reply(200, {"text": text, "audio": audio, "fixedVoice": bool(ELEVEN_KEY and data.get("voice", True))})
+                return self.reply(200, {"text": text, "audio": audio, "fixedVoice": bool(audio)})
             if route == "/api/analyze-record":
                 sample_id = data.get("sampleId")
                 if sample_id is not None:

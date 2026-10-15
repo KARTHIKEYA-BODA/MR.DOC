@@ -1149,7 +1149,7 @@ function handleAnalyzedRecord(value, audio) {
     recordId: record.id
   });
   save(); switchPage("chat");
-  if (voice && audio) playBase64Audio(audio); else setExp("supportive", 1600);
+  if (voice) speakText(record.summary, audio || "", true); else setExp("supportive", 1600);
 }
 
 
