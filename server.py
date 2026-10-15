@@ -145,7 +145,10 @@ def call_elevenlabs(text: str) -> str:
         with urllib.request.urlopen(req, timeout=20) as r:
             return base64.b64encode(r.read()).decode("utf-8")
     except urllib.error.HTTPError as e:
-        print(f"[ElevenLabs] Configured voice returned {e.code}; keeping this voice fixed.")
+        # Log ElevenLabs' response body so the precise API error appears in Render Logs.
+        # Do not log the request headers (which contain the secret API key) or user text.
+        error_body = e.read().decode("utf-8", errors="replace")[:2000]
+        print(f"[ElevenLabs] TTS request failed (HTTP {e.code}): {error_body}")
     except Exception as e:
         print(f"[ElevenLabs] Configured voice failed: {e}")
     return ""
