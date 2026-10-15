@@ -3878,7 +3878,13 @@
         border-color: var(--acc) !important;
       }
     </style>
-  </head>
+  <style>
+/* ===== Mr.Doc smooth character motion (driven by the JS spring animator) ===== */
+.char, #hw, [data-mode] .char, [data-mode] #hw { animation: none !important; will-change: transform; backface-visibility: hidden; }
+#bd img, #hd img { opacity: 0; transition: none; will-change: opacity; backface-visibility: hidden; transform: translateZ(0); }
+#bd img.on, #hd img.on, #bd img.prev, #hd img.prev { opacity: 1; }
+</style>
+</head>
   <body class="intro-active">
     <!-- Welcome screen; the animated introduction starts only after the visitor clicks. -->
     <section
@@ -5432,24 +5438,136 @@
         hd.appendChild(i);
       }
 
-      let expT,
+      /* ===== Mr.Doc smooth character motion engine =====
+   - Body + head are driven by a requestAnimationFrame spring animator (60/120fps),
+     instead of tiny looping CSS keyframes that restart on every mode change.
+   - Sprite swaps use an overlap crossfade (old frame stays solid until the new one
+     is fully opaque) so there is no opacity dip / ghosting between poses.
+   - Head follows the body with a slight lag (follow-through), reacts to the cursor,
+     and nods with the voice level while speaking. */
+const Motion = (() => {
+  const body = $("#stage"), head = $("#hw");
+  const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const amp = reduce ? 0.25 : 1;
+  // f = breathing Hz, by = body rise (px @559px tall), bs = chest scale, hr = head sway (deg),
+  // hy/hx = head drift (px), hOff = resting head tilt (deg), lean = body x offset (px)
+  const MODES = {
+    idle:  { f: 0.24, by: 2.4, bs: 0.006, hr: 0.9, hy: 0.9, hx: 0.8, hOff: 0,    lean: 0,   talk: 0 },
+    cheer: { f: 0.55, by: 4.2, bs: 0.010, hr: 1.6, hy: 1.6, hx: 1.2, hOff: 0.6,  lean: 0,   talk: 0 },
+    look:  { f: 0.32, by: 2.0, bs: 0.005, hr: 0.9, hy: 0.8, hx: 0.8, hOff: 1.8,  lean: 2.4, talk: 0 },
+    think: { f: 0.28, by: 2.0, bs: 0.005, hr: 1.1, hy: 1.0, hx: 0.9, hOff: -2.4, lean: -1,  talk: 0 },
+    speak: { f: 0.70, by: 2.2, bs: 0.007, hr: 1.2, hy: 1.0, hx: 1.0, hOff: 0,    lean: 0,   talk: 1 },
+    away:  { f: 0.16, by: 1.4, bs: 0.003, hr: 0.4, hy: 0.4, hx: 0.3, hOff: 0,    lean: 0,   talk: 0 }
+  };
+  const sp = (k, c) => ({ k, c, x: 0, v: 0 });
+  const S = {
+    by: sp(95, 15), bs: sp(120, 17), bx: sp(80, 14), br: sp(90, 14),
+    hr: sp(150, 16), hy: sp(150, 16), hx: sp(130, 15)
+  };
+  let mode = MODES.idle, modeName = "idle", level = null, smoothL = 0;
+  let ptrX = 0, ptrT = 0, t = 0, last = 0, u = 1;
+
+  function step(s, target, dt) {
+    const n = Math.max(1, Math.ceil(dt * 120)), h = dt / n;
+    for (let i = 0; i < n; i++) { s.v += (s.k * (target - s.x) - s.c * s.v) * h; s.x += s.v * h; }
+  }
+  function kick(power = 1) {
+    const d = Math.random() < 0.5 ? -1 : 1;
+    S.by.v -= 70 * power * u * amp; S.bs.v += 0.12 * power * amp;
+    S.hr.v += d * 45 * power * amp;  S.hy.v += 24 * power * u * amp;
+  }
+  function setMode(name) {
+    const m = MODES[name] || MODES.idle;
+    if (m === mode) return;
+    mode = m; modeName = name; kick(0.9);
+  }
+  function setLevel(v) { level = v == null ? null : Math.max(0, Math.min(1, v)); }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!last) { last = now; return; }
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (dt <= 0) return;
+    t += dt;
+    const w = Math.PI * 2 * t, m = mode;
+    const breath = 0.5 + 0.5 * Math.sin(w * m.f);
+    let L = 0;
+    if (m.talk) {
+      L = level != null ? level
+        : Math.max(0, (0.5 + 0.5 * Math.sin(w * 3.9)) * (0.55 + 0.45 * Math.sin(w * 0.8 + 2)) - 0.1) * 1.1;
+    }
+    smoothL += (L - smoothL) * (1 - Math.exp(-dt * 16));
+    const px = (now - ptrT < 3000 ? ptrX : 0) * (m.talk ? 0.5 : 1);
+    const k = u * amp;
+    step(S.by, -(m.by * breath + smoothL * 1.8) * k, dt);
+    step(S.bs, (m.bs * breath + smoothL * 0.004) * amp, dt);
+    step(S.bx, (m.lean + px * 1.2) * k, dt);
+    step(S.br, (m.lean * 0.12 + Math.sin(w * 0.19) * 0.25 * m.hr) * amp, dt);
+    step(S.hr, m.hOff + amp * (m.hr * (0.6 * Math.sin(w * 0.31 + 1.3) + 0.4 * Math.sin(w * 0.53)) + px * 1.8
+      + smoothL * 1.1 * Math.sin(w * 2.3)), dt);
+    step(S.hy, (m.hy * Math.sin(w * m.f - 0.9) - smoothL * 2.2) * k, dt);
+    step(S.hx, (m.hx * Math.sin(w * 0.27) + px * 2.2) * k, dt);
+    const s = S.bs.x;
+    body.style.transform =
+      `translate3d(${S.bx.x.toFixed(2)}px,${S.by.x.toFixed(2)}px,0) rotate(${S.br.x.toFixed(3)}deg) scale(${(1 + s * 0.4).toFixed(4)},${(1 + s).toFixed(4)})`;
+    head.style.transform =
+      `translate3d(${S.hx.x.toFixed(2)}px,${S.hy.x.toFixed(2)}px,0) rotate(${S.hr.x.toFixed(3)}deg)`;
+  }
+  if (window.ResizeObserver) new ResizeObserver(() => { u = (body.offsetHeight || 559) / 559; }).observe(body);
+  u = (body.offsetHeight || 559) / 559;
+  addEventListener("pointermove", e => {
+    const r = body.getBoundingClientRect();
+    ptrX = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / 420)); ptrT = performance.now();
+  }, { passive: true });
+  document.addEventListener("visibilitychange", () => { last = 0; });
+  requestAnimationFrame(frame);
+
+  /* ---- sprite crossfade: incoming frame fades in ON TOP of a solid outgoing frame ---- */
+  let z = 10;
+  function swap(box, key, ms) {
+    const next = key ? box.querySelector(`img[data-k="${key}"]`) : null;
+    const cur = box.querySelector("img.on");
+    if (next && next === cur) return false;
+    if (cur) {                                  // freeze outgoing frame at its current opacity
+      const o = getComputedStyle(cur).opacity;
+      cur.classList.remove("on"); cur.classList.add("prev");
+      cur.style.transition = "none"; cur.style.opacity = o;
+      if (!next) {                              // nothing replaces it: fade it out
+        void cur.offsetWidth;
+        cur.style.transition = `opacity ${ms}ms linear`; cur.style.opacity = "0";
+      }
+    }
+    if (next) {
+      next.classList.remove("prev"); next.style.opacity = "";
+      next.style.zIndex = ++z;
+      next.style.transition = ms ? `opacity ${ms}ms cubic-bezier(.33,0,.2,1)` : "none";
+      next.classList.add("on");
+    }
+    clearTimeout(box._cl);
+    box._cl = setTimeout(() => box.querySelectorAll("img.prev").forEach(i => {
+      i.classList.remove("prev"); i.style.opacity = ""; i.style.transition = ""; i.style.zIndex = "";
+    }), ms + 50);
+    return true;
+  }
+  let headKey = "happy";
+  function swapHead(key) {
+    const ms = key === "blink" ? 0 : headKey === "blink" ? 60 : modeName === "speak" ? 50 : 100;
+    headKey = key; swap(hd, key, ms);
+  }
+  function swapBody(key) { if (swap(bd, key, 220)) kick(0.45); }
+  // decode sprites up-front so the first swap never hitches
+  document.querySelectorAll("#bd img, #hd img").forEach(i => { if (i.decode) i.decode().catch(() => {}); });
+  return { setMode, setLevel, kick, swapHead, swapBody };
+})();
+
+let expT,
         talkT,
         gestT,
         cur0 = "happy",
         lastAct = Date.now(),
         curH = "happy";
-      function showH(k) {
-        curH = k;
-        hd.dataset.frame = k || "";
-        hd.querySelectorAll("img").forEach((i) =>
-          i.classList.toggle("on", i.dataset.k === k),
-        );
-      }
-      function showB(k) {
-        bd.querySelectorAll("img").forEach((i) =>
-          i.classList.toggle("on", i.dataset.k === k),
-        );
-      }
+      function showH(k) { curH = k; hd.dataset.frame = k || ""; Motion.swapHead(k); }
+      function showB(k) { Motion.swapBody(k); }
 
       function setExp(k, hold) {
         clearTimeout(expT);
@@ -5457,6 +5575,7 @@
         clearTimeout(gestT);
         cur0 = k;
         const e = EXP[k];
+        Motion.setMode(e.m);
         if ($("#sb")) $("#sb").dataset.mode = e.m;
         hd.dataset.mode = e.m;
         if (e.f) {
@@ -5481,7 +5600,7 @@
           showB("b_open");
           const st = () => {
             showH(H[n++ % H.length]);
-            talkT = setTimeout(st, 130);
+            talkT = setTimeout(st, 95 + Math.random() * 70);
           };
           const B = ["b_open", "b_wide", "b_open"];
           let m = 0;
