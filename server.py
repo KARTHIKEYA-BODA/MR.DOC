@@ -39,7 +39,7 @@ DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("CARELY_MODEL", "claude-sonnet-5-5")
 GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.8-flash-tts")
-GEMINI_TTS_VOICE = os.environ.get("GEMINI_TTS_VOICE", "Tavi")
+GEMINI_TTS_VOICE = os.environ.get("GEMINI_TTS_VOICE", "Puck")
 PORT = int(os.environ.get("PORT", "8000"))
 
 SYSTEM_PROMPT = (
@@ -137,7 +137,7 @@ def call_gemini_tts(text: str) -> str:
                 "text": text,
                 "annotations": [{
                     "type": "speech_metadata",
-                    "style": "Warm, calm, natural and reassuring. Clear pronunciation, steady conversational pace, gentle expression, not theatrical.",
+                    "style": "A friendly male doctor character speaking directly to a person. Natural everyday conversation, clear and confident, medium pitch, lightly upbeat, normal pace. Sound approachable and professional, not like a bedtime story, audiobook, narrator, or meditation guide. Avoid whispering, drawn-out words, and long dramatic pauses.",
                 }],
             }],
         }],

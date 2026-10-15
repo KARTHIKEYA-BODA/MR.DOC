@@ -226,7 +226,7 @@ The `.env` file accepts the following parameters:
 | `GEMINI_API_KEY` | *(None)* | Google Gemini API key used for multimodal document OCR and chat. |
 | `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Model identifier for Gemini (`gemini-3.1-flash-lite`, `gemini-2.5-flash`, etc.). |
 | `GEMINI_TTS_MODEL` | `gemini-3.8-flash-tts` | Gemini TTS model for spoken replies. |
-| `GEMINI_TTS_VOICE` | `Tavi` | Gemini TTS voice name for spoken replies. |
+| `GEMINI_TTS_VOICE` | `Puck` | Gemini TTS voice name for spoken replies. |
 | `ANTHROPIC_API_KEY` | *(None)* | Anthropic Claude API key (used if Gemini key is omitted). |
 | `CARELY_MODEL` | `claude-sonnet-5-5` | Model identifier for Claude (`claude-sonnet-5-5`, `claude-3-5-sonnet`, etc.). |
 | `PORT` | `8000` | Local port number for the HTTP server. |
