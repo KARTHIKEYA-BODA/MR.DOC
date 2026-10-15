@@ -499,7 +499,7 @@
         width: 100%;
         height: 100%;
         opacity: 0;
-        transition: opacity 0.25s ease-in-out;
+        transition: none;
         pointer-events: none;
       }
       #bd img.on {
@@ -512,7 +512,7 @@
         width: 100%;
         height: 100%;
         opacity: 0;
-        transition: opacity 0.03s linear;
+        transition: none;
         pointer-events: none;
       }
       #hd img.on {
@@ -3351,18 +3351,12 @@
         color: #fff;
       }
 
-      /* Soft, stable character motion and deliberate sprite crossfades. */
+      /* Switch complete sprite frames without blended ghost images. */
       #bd img {
-        transition: opacity 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+        transition: none !important;
       }
       #hd img {
-        transition: opacity 0.12s cubic-bezier(0.22, 0.61, 0.36, 1);
-      }
-      #hd[data-mode="speak"] img {
-        transition-duration: 0.085s;
-      }
-      #hd[data-frame="blink"] img {
-        transition-duration: 0.07s;
+        transition: none !important;
       }
       [data-mode="idle"] .char {
         animation-duration: 5.2s;
