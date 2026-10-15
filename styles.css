@@ -2083,8 +2083,3 @@ button, input, textarea, select { transition-duration: .16s; }
   .printing-record .demo-note { border: 1px solid #999 !important; color: #333 !important; }
   .printing-record table { break-inside: avoid; }
 }
-
-/* ===== Mr.Doc smooth character motion (driven by the JS spring animator) ===== */
-.char, #hw, [data-mode] .char, [data-mode] #hw { animation: none !important; will-change: transform; backface-visibility: hidden; }
-#bd img, #hd img { opacity: 0; transition: none; will-change: opacity; backface-visibility: hidden; transform: translateZ(0); }
-#bd img.on, #hd img.on, #bd img.prev, #hd img.prev { opacity: 1; }
