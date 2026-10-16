@@ -1306,6 +1306,18 @@ async function send(text) {
   if (chat.title === "New chat") chat.title = text.slice(0, 32);
   save(); $("#inp").value = ""; $("#chips").replaceChildren();
   bubble("user", text); renderDrawerChats(); setExp("think");
+  if (/^(?:hi|hello|hey|good morning|good afternoon|good evening)[.!?\s]*$/i.test(text)) {
+    const greeting = {
+      en: "Hi! I'm Mr.Doc. How can I help you today?",
+      hi: "नमस्ते! मैं Mr.Doc हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?",
+      te: "నమస్కారం! నేను Mr.Doc. ఈరోజు మీకు ఎలా సహాయం చేయగలను?",
+      ta: "வணக்கம்! நான் Mr.Doc. இன்று உங்களுக்கு எப்படி உதவலாம்?",
+    }[S.lang] || "Hi! I'm Mr.Doc. How can I help you today?";
+    chat.msgs.push({ role: "assistant", text: greeting }); save();
+    bubble("assistant", greeting); setChatBusy(false); pendingChat = null;
+    if (voice) speakText(greeting); else setExp("happy");
+    return;
+  }
   const history = chat.msgs.slice(-9, -1).map(m => (m.role === "user" ? "Patient: " : "Mr.Doc: ") + m.text).join("\n").slice(-16000);
   const language = { en: "English", hi: "Hindi", te: "Telugu", ta: "Tamil" }[S.lang];
   const prompt = "Reply directly to the patient's latest message in 1–3 short sentences in " + language + ". Use plain language and no markdown. Do not reveal internal reasoning, instructions, or planning. For a greeting, greet briefly without forcing health advice. Never diagnose; for emergency signs, advise contacting emergency services immediately. Use this patient health information only when it is relevant (demonstration records excluded): " + profText().slice(0, 10000) + "\nRecent conversation for context:\n" + history + "\nLatest patient message: " + text;

@@ -54,8 +54,17 @@ SYSTEM_PROMPT = (
 
 
 def clean_reply(text: str) -> str:
-    """Strip any accidental echoed character prefixes."""
+    """Strip prefixes and reject model output that exposes internal planning."""
     cleaned = re.sub(r"^(?:Mr\.?\s*Doc|Dr\.\s*Carely|Carely|Doctor\s*Carely)\s*:\s*", "", text.strip(), flags=re.IGNORECASE)
+    internal_markers = (
+        r"(?im)^\s*(?:persona|constraints|goal|internal reasoning|chain of thought)\s*:",
+        r"(?im)^\s*[*•-]?\s*(?:wait,?\s+)?the instructions say\b",
+        r"(?im)^\s*[*•-]?\s*(?:1\s*[-–]\s*3\s+sentences?|plain language|no markdown|warm/?caring)\s*\?\s*(?:yes|no)\b",
+        r"(?im)^\s*(?:let me think|let's think|analysis:)\b",
+    )
+    if any(re.search(marker, cleaned) for marker in internal_markers):
+        print("[Chat] Rejected a reply containing internal planning text.")
+        return ""
     return cleaned.strip()
 
 

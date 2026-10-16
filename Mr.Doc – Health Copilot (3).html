@@ -7374,6 +7374,22 @@
         bubble("user", text);
         renderDrawerChats();
         setExp("think");
+        if (/^(?:hi|hello|hey|good morning|good afternoon|good evening)[.!?\s]*$/i.test(text)) {
+          const greeting = {
+            en: "Hi! I'm Mr.Doc. How can I help you today?",
+            hi: "नमस्ते! मैं Mr.Doc हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?",
+            te: "నమస్కారం! నేను Mr.Doc. ఈరోజు మీకు ఎలా సహాయం చేయగలను?",
+            ta: "வணக்கம்! நான் Mr.Doc. இன்று உங்களுக்கு எப்படி உதவலாம்?",
+          }[S.lang] || "Hi! I'm Mr.Doc. How can I help you today?";
+          chat.msgs.push({ role: "assistant", text: greeting });
+          save();
+          bubble("assistant", greeting);
+          setChatBusy(false);
+          pendingChat = null;
+          if (voice) speakText(greeting);
+          else setExp("happy");
+          return;
+        }
         const history = chat.msgs
           .slice(-9, -1)
           .map((m) => (m.role === "user" ? "Patient: " : "Mr.Doc: ") + m.text)
