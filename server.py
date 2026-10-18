@@ -678,6 +678,7 @@ MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_BODY_BYTES = 20 * 1024 * 1024
 PUBLIC_ROOT = Path(__file__).resolve().parent
 APP_PAGE = "Mr.Doc – Health Copilot (3).html"
+MAINTENANCE_MODE = os.environ.get("MAINTENANCE_MODE", "true").strip().lower() in ("1", "true", "yes", "on")
 UPLOAD_TYPES = {"image/png", "image/jpeg", "image/webp", "application/pdf"}
 
 
@@ -710,7 +711,7 @@ class Handler(SimpleHTTPRequestHandler):
             query = urlsplit(self.path).query
             self.path = f"/{APP_PAGE}" + (f"?{query}" if query else "")
             path = f"/{APP_PAGE}"
-        public_file = path in (f"/{APP_PAGE}", "/styles.css", "/app.js")
+        public_file = path in (f"/{APP_PAGE}", "/maintenance.html", "/styles.css", "/app.js")
         public_asset = (path.startswith("/assets/") and Path(path).suffix.lower() in
                         (".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"))
         public_video = path in ("/frames/outputs/DOC_SPEAKS_2.0.mp4", "/frames/outputs/animation.mp4")
@@ -730,6 +731,11 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if MAINTENANCE_MODE:
+            if urlsplit(self.path).path.startswith("/api/"):
+                return self.reply(503, {"error": "The website is temporarily undergoing maintenance. Please try again soon."})
+            self.path = "/maintenance.html"
+            return super().do_GET()
         if urlsplit(self.path).path == "/api/sample-records":
             return self.reply(200, SAMPLE_RECORDS)
         return super().do_GET()
@@ -751,6 +757,8 @@ class Handler(SimpleHTTPRequestHandler):
         return value
 
     def do_POST(self):
+        if MAINTENANCE_MODE:
+            return self.reply(503, {"success": False, "error": "The website is temporarily undergoing maintenance. Please try again soon."})
         route = urlsplit(self.path).path
         if route not in ("/api/chat", "/api/analyze-record", "/api/abha-sync"):
             return self.reply(404, {"error": "Unknown endpoint."})

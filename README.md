@@ -215,6 +215,10 @@ Open your favorite browser and visit:
 http://localhost:8000
 ```
 
+## Temporary Maintenance Mode
+
+The deployed site serves `maintenance.html` while `MAINTENANCE_MODE` is enabled. It is enabled by default for this maintenance deployment. To restore the app later, set `MAINTENANCE_MODE=false` in the Render service environment and redeploy.
+
 ---
 
 ## ⚙️ Configuration (`.env`)
