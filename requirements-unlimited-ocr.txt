@@ -1,0 +1,3 @@
+# Optional PDF-to-image conversion in the Mr.Doc server, not the GPU model runtime.
+pypdfium2>=4.30,<6
+Pillow>=10.4,<13

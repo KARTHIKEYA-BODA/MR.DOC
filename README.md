@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/AI_Vision-Google_Gemini-4285F4?style=flat&logo=google" alt="Gemini">
     <img src="https://img.shields.io/badge/AI_Model-Anthropic_Claude-D97706?style=flat&logo=anthropic" alt="Claude">
     <img src="https://img.shields.io/badge/Voice-Gemini_TTS-4285F4?style=flat&logo=google" alt="Gemini TTS">
-    <img src="https://img.shields.io/badge/Standard-FHIR_JSON-blue?style=flat" alt="FHIR">
+    <img src="https://img.shields.io/badge/Data-FHIR--style_resources-blue?style=flat" alt="FHIR-style record data">
     <img src="https://img.shields.io/badge/Languages-EN_|_HI_|_TE_|_TA-orange?style=flat" alt="Languages">
   </p>
 </div>
@@ -50,7 +50,7 @@ Mr.Doc bridges this gap:
 - **Plain-Language Explanations:** Explains what high/low test numbers mean and highlights danger signs without clinical jargon.
 - **Interactive Animated Doctor:** A friendly chibi avatar with real-time facial expressions, gaze tracking, and speech animations.
 - **Speaks Your Language:** Instant translation and native voice playback in **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)**.
-- **Local & Private:** Zero third-party cloud database required; all patient data stays safely stored in your browser's local storage.
+- **Browser-based record storage:** The app saves records in browser local storage; this storage is not encrypted by the app. Uploaded documents and chat context are sent to the AI provider configured for the app when the user requests analysis or chat. No patient database is hosted by this prototype.
 
 ---
 
@@ -82,7 +82,7 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 |   +--------------------------+   |      • Paracetamol 650mg | 1-0-1 SOS | After Food | 5 Days     |
 |   [ 🚀 Send ] [ 🎤 Mic ]         |  -----------------------------------------------------------  |
 |                                  |   💡 Plain-Language Summary & Questions for your Doctor       |
-|                                  |   [ 🖨️ Print / Save PDF ]  [ 🏥 Export FHIR JSON ]             |
+|                                  |   [ 🖨️ Print / Save PDF ]                                        |
 +--------------------------------------------------------------------------------------------------+
 |  🕒 Health Timeline & Past History (Stored 100% locally on your device)                           |
 +--------------------------------------------------------------------------------------------------+
@@ -100,6 +100,8 @@ Here is how the application screen is laid out when you launch Mr.Doc:
   - Medication schedules (medicine name, dosage, frequency like `1-0-1`, timing, instructions).
   - Diagnostic lab values with units, normal reference ranges, and abnormal indicators (`CRITICAL`, `HIGH`, `LOW`, `NORMAL`).
   - Practical self-care lifestyle tips and intelligent questions to ask your doctor.
+- For bilingual documents, the OCR prompt preserves original scripts, labels confidently detected source languages, and leaves unclear text for review instead of silently guessing. Accuracy for regional handwriting still needs evaluation against verified examples.
+- An optional [Unlimited-OCR connector](docs/unlimited-ocr.md) can request a second independent transcription from a separately hosted GPU service. It is disabled until configured; agreement does not prove accuracy. Conflicting medicine or lab readings are flagged for review.
 
 ### 2. 🎭 Interactive Animated Character Guide
 
@@ -111,15 +113,17 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 - Supports **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)** across all explanations and chat.
 - Natural voice synthesis via **Gemini TTS**, with automated fallback to the browser's native **Web Speech API** if speech generation is unavailable.
 
-### 4. 🏥 FHIR-Formatted Demo Export
+### 4. FHIR-Style Record Data
 
-- Generates a local **FHIR-formatted JSON demonstration** with `Composition`, `Patient`, `Condition`, `Observation`, and `MedicationRequest` resources. It has not been validated against the ABDM profile and should not be treated as an official ABDM export.
-- Includes a local demonstration gateway for India's **ABDM / ABHA** (Ayushman Bharat Digital Mission) health IDs.
+- Each extracted record includes a **FHIR-style JSON bundle** with `Composition`, `Patient`, `Condition`, `Observation`, and `MedicationRequest` resources. This structure is available in the analysis response for technical review, while the patient interface focuses on the health record itself.
+- The bundle has not been validated against an ABDM profile. Mr.Doc does not authenticate an ABHA ID or connect to ABDM. The architecture diagram below shows where a future standards integration would fit.
 
 ### 5. 🖨️ Print-Friendly & Timeline History
 
 - Clean, clinical-grade printable summaries formatted for doctors' appointments.
-- Local chronological timeline tracking all past consultations and test trends.
+- The health timeline compares dated numeric lab results only when the patient name, test name, and recorded unit match; it shows source values without drawing a diagnosis from changes.
+- Health details show medicine instructions and whether OCR read them clearly or the user reviewed them. Time reminders require an exact time stated in the prescription and run while Mr.Doc is open.
+- A print-ready doctor-visit summary compiles recent uploaded records, medicines read clearly or reviewed, and recorded lab results. Medicine entries may not be current and are labeled with their source record.
 
 ---
 
@@ -131,18 +135,21 @@ flowchart TD
     B -->|Base64 Payload / Query| C[Python Server: server.py]
 
     C -->|Document upload: GEMINI_API_KEY required| D[Google Gemini Vision API]
+    C -->|Optional second OCR reading| K[Unlimited-OCR GPU service]
     C -->|Chat: GEMINI_API_KEY or ANTHROPIC_API_KEY| E[Gemini or Anthropic chat API]
     C -->|Has GEMINI_API_KEY?| F[Gemini TTS API]
 
     D -->|Structured JSON Response| C
+    K -->|Independent document text| C
     E -->|Chat reply| C
     F -->|WAV Audio| C
 
-    C -->|Unified Clean JSON + Audio| B
+    C -->|Structured record + FHIR-style bundle + Audio| B
     B -->|Update Sprite & Expressions| G[Animated Chibi Doctor]
     B -->|Play Voice Audio| H[Audio Speaker]
     B -->|Render Lab Results & Meds| I[Interactive Dashboard]
-    B -->|Save to localStorage| J[Browser Storage & FHIR Export]
+    B -->|Save records and FHIR-style bundles| J[Browser localStorage]
+    J -.->|Future integration only| L[ABDM / ABHA ecosystem]
 ```
 
 1. **Input:** You upload a medical document or ask a health question in chat.
@@ -172,6 +179,7 @@ The entire backend is built using **pure Python standard library modules**:
 - _(Optional)_ API Keys for AI features:
   - **Google Gemini API Key** (Free tier available from [Google AI Studio](https://aistudio.google.com/))
   - **Anthropic API Key** (from [Anthropic Console](https://console.anthropic.com/))
+- _(Optional)_ Unlimited-OCR: a separately running GPU service. The image connector needs no extra app packages; PDF rendering uses `requirements-unlimited-ocr.txt`. See [setup and limitations](docs/unlimited-ocr.md).
 
 ---
 
@@ -209,7 +217,7 @@ cp .env.example .env
 
 Open `.env` in any text editor and paste your API key (e.g., your `GEMINI_API_KEY`).
 
-> **Note:** Even without an API key, you can still launch the app and test all pre-loaded sample records (Blood Test, Prescription, Discharge Summary) with full multi-language translations and browser speech!
+> **Note:** The app starts with an empty record history. You can open it without an API key, but analyzing a new document requires a configured Gemini API key.
 
 ### Step 3: Run the Server
 
@@ -224,7 +232,7 @@ You should see output similar to:
 ```text
 Mr.Doc AI Health Copilot listening on 127.0.0.1:8000
 Open http://localhost:8000 in this computer's browser.
-Features: Multimodal OCR | FHIR Export | Multi-Language | Voice (Browser Speech)
+Features: Multimodal OCR | FHIR-style record data | Multi-language | Voice (Browser Speech)
 ```
 
 ### Step 4: Open in Your Browser
@@ -284,13 +292,12 @@ The HTML page is the shell. The shared interface behavior lives in `app.js`, and
 | `GET`  | `/api/sample-records` | Returns pre-configured clinical sample records with full multilingual translations.       |
 | `POST` | `/api/chat`           | Accepts `{ prompt, language, voice }` and streams back AI doctor guidance + audio.        |
 | `POST` | `/api/analyze-record` | Accepts base64 encoded document image/PDF or `sampleId`, returns structured medical JSON. |
-| `POST` | `/api/abha-sync`      | Local demonstration response with sample records; it does not verify an ABHA ID or connect to ABDM. |
 
 ---
 
 ## 🔒 Privacy & Medical Disclaimer
 
-- **Privacy First:** Medical documents and chat histories remain strictly in your browser's local storage (`localStorage`). No patient database is hosted on the server.
+- **Data handling:** Saved records and chat history are kept in this browser's `localStorage`, which is not encrypted by the app. Documents and chat context are sent to the configured AI provider for requested analysis and replies. No patient database is hosted on the server.
 - **Data Transmission:** When an AI key is supplied, document images and prompts are sent over HTTPS directly to the chosen provider (Google or Anthropic) for inference.
 - **Medical Disclaimer:** **Mr.Doc is an educational prototype and personal health copilot, NOT a certified medical device or clinical diagnostic tool.** It does not replace the consultation, diagnosis, or treatment of a qualified healthcare professional. Always verify extracted medication dosages with your prescribing physician. In case of a medical emergency, call your local emergency services immediately.
 

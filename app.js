@@ -17,14 +17,6 @@
           window.location.protocol === "file:"
             ? "http://localhost:8000/api/analyze-record"
             : "/api/analyze-record",
-        abhaEndpoint:
-          window.location.protocol === "file:"
-            ? "http://localhost:8000/api/abha-sync"
-            : "/api/abha-sync",
-        sampleEndpoint:
-          window.location.protocol === "file:"
-            ? "http://localhost:8000/api/sample-records"
-            : "/api/sample-records",
       };
 
       async function requestJson(url, payload, signal) {
@@ -189,6 +181,7 @@
               "instructions",
               "sourceText",
               "rawText",
+              "reviewReason",
             ],
           ],
           [
@@ -214,6 +207,7 @@
                 ]),
               );
               entry.ocrConfidence = boundedOcrConfidence(x.ocrConfidence);
+              entry.userVerified = Boolean(x.userVerified);
               if (key === "medicines") {
                 entry.strength ||= entry.dosage;
                 entry.dosage ||= entry.strength;
@@ -226,12 +220,11 @@
                 entry.reminderTimes = Array.isArray(x.reminderTimes)
                   ? x.reminderTimes.filter((time) => typeof time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)).slice(0, 6)
                   : [];
-                entry.userVerified = Boolean(x.userVerified);
               }
               entry.needsReview =
                 Boolean(x.needsReview) ||
                 (!!entry.sourceText &&
-                  (entry.ocrConfidence !== null && entry.ocrConfidence < 70)) ||
+                  !entry.userVerified && (entry.ocrConfidence !== null && entry.ocrConfidence < 70)) ||
                 (!!entry.sourceText && !entry.name && key === "medicines");
               return entry;
             })
@@ -240,6 +233,9 @@
             );
         }
         record.verbatimTranscription = stringValue(value.verbatimTranscription);
+        record.secondaryOcrText = stringValue(value.secondaryOcrText).slice(0, 60000);
+        record.ocrReaders = strings(value.ocrReaders).filter((reader) => ["Gemini Vision", "Unlimited-OCR"].includes(reader));
+        record.secondaryOcrStatus = ["used", "unavailable", "pdf_unavailable", "page_limit", "not_configured"].includes(value.secondaryOcrStatus) ? value.secondaryOcrStatus : "";
         record.ocrConfidence = boundedOcrConfidence(value.ocrConfidence);
         record.reviewItems = (Array.isArray(value.reviewItems) ? value.reviewItems : [])
           .filter((item) => item && typeof item === "object")
@@ -250,12 +246,15 @@
             reason: stringValue(item.reason),
             alternatives: strings(item.alternatives).slice(0, 3),
           }));
-        record.reviewRequired = Boolean(value.reviewRequired) || record.reviewItems.length > 0 || record.medicines.some((medicine) => medicine.needsReview) || /\[unclear\]/i.test(record.verbatimTranscription);
+        record.reviewRequired = Boolean(value.reviewRequired) || record.reviewItems.length > 0 || record.medicines.some((medicine) => medicine.needsReview) || record.labTests.some((test) => test.needsReview) || /\[unclear\]/i.test(record.verbatimTranscription);
         record.imageQuality = ["good", "fair", "poor"].includes(
           value.imageQuality,
         )
           ? value.imageQuality
           : "unknown";
+        record.sourceLanguages = strings(value.sourceLanguages)
+          .filter((language) => ["en", "hi", "te", "ta", "other"].includes(language))
+          .slice(0, 5);
         record.medicinesConfirmed = Boolean(value.medicinesConfirmed);
         record.documentReviewed = Boolean(value.documentReviewed);
         record.ocrVersion = Number.isInteger(value.ocrVersion)
@@ -388,12 +387,7 @@
       if (!S.chats.some((c) => c.id === S.active))
         S.active = S.chats[0]?.id || null;
       if (!["en", "hi", "te", "ta"].includes(S.lang)) S.lang = "en";
-      S.abha = {
-        linked: false,
-        address: "",
-        number: "",
-        ...objectValue(S.abha),
-      };
+      delete S.abha;
       S.voice = S.voice !== false;
       const save = () => {
         try {
@@ -577,38 +571,6 @@
         return c;
       }
 
-      // Pre-load rich sample records if storage is clean or update translations
-      async function initSamples() {
-        try {
-          const res = await fetch(CONFIG.sampleEndpoint);
-          if (res.ok) {
-            const data = await res.json();
-            const samples = Object.values(data)
-              .map(normalizeRecord)
-              .filter(Boolean);
-            if (!S.records || !S.records.length) {
-              S.records = samples;
-              if (S.records.length) S.curRecord = S.records[0].id;
-              save();
-            } else {
-              // Keep sample records in sync with latest translations
-              samples.forEach((sm) => {
-                const idx = S.records.findIndex((r) => r.id === sm.id);
-                if (idx !== -1) {
-                  S.records[idx].isDemo = true;
-                  S.records[idx].translations = sm.translations;
-                  S.records[idx].summary = sm.summary;
-                  S.records[idx].labTests = sm.labTests;
-                }
-              });
-              save();
-            }
-            if (activePage !== "chat") renderActivePage();
-          }
-        } catch (e) {}
-      }
-      initSamples();
-
       // Unified Health Profile text helper
       function profText() {
         const p = S.profile,
@@ -746,7 +708,14 @@
         const c = cur();
         $("#msgs").innerHTML = "";
 
-        // NO initial auto-greeting message in new chat per user instruction
+        if (!c || !c.msgs.length) {
+          const welcome = document.createElement("div");
+          welcome.className = "chat-empty-state";
+          welcome.innerHTML = "<strong>How can I help you today?</strong><span>Ask a health question or upload a report to understand it in simple language.</span>";
+          $("#msgs").appendChild(welcome);
+        }
+
+        // Keep the welcome prompt separate from the conversation history.
         if (c && c.msgs) {
           c.msgs.forEach((m) => bubble(m.role, m.text, m.recordId));
         }
@@ -860,8 +829,6 @@
       function renderActivePage() {
         if (activePage === "records") renderRecordsPage();
         else if (activePage === "timeline") renderTimelinePage();
-        else if (activePage === "abha") renderAbhaPage();
-        else if (activePage === "arch") renderArchPage();
         else if (activePage === "me") renderProfilePage();
         else if (activePage === "guide") renderGuidePage();
         else if (activePage === "details") renderHealthDetailsPage();
@@ -876,10 +843,8 @@
         if (!el) return;
         const record = S.records.find((r) => r.id === S.curRecord && !isDemo(r));
         const localToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-        const confirmedMeds = personalRecords().flatMap((r) =>
-          (r.medicinesConfirmed ? r.medicines : [])
-            .map((medicine, index) => ({ record: r, medicine, index }))
-            .filter(({ medicine }) => medicine.userVerified && medicine.name && medicine.name.toLowerCase() !== "illegible"),
+        const medicineEntries = personalRecords().flatMap((r) =>
+          (r.medicines || []).map((medicine, index) => ({ record: r, medicine, index })),
         );
         const daysSince = (date) => {
           const start = new Date(`${date}T12:00:00`);
@@ -904,16 +869,47 @@
             <div class="health-item-copy"><span class="health-source-tag">From uploaded record · ${esc(recordItem.date || "date not shown")}</span><h3>${esc(label || "Health concern")}</h3>${recordItem.bodySite ? `<p><b>Area:</b> ${esc(recordItem.bodySite)}</p>` : ""}${recordItem.cause ? `<p><b>Cause stated:</b> ${esc(recordItem.cause)}</p>` : ""}${severity ? `<p><b>Severity stated:</b> ${esc(severity)}</p>` : ""}<p><b>Started:</b> ${started ? `${esc(started)}${days === null ? "" : ` · ${days} day${days === 1 ? "" : "s"} tracked`}` : "Not stated in this upload"}</p>${isInjury ? `<div class="healing-status">${progress?.healed ? "Marked healed by you" : "In progress · based on your update"}</div><button class="btn-sm ${progress?.healed ? "btn-sec" : "btn-pri"}" type="button" data-healed="${esc(recordItem.id)}">${progress?.healed ? "Mark in progress" : "Mark as healed"}</button>` : ""}<button class="btn-sm btn-sec" type="button" data-record-open="${esc(recordItem.id)}">View full result</button></div>
           </article>`;
         }).join("");
-        const medicineCards = confirmedMeds.map(({ record: r, medicine: m, index }) => {
-          const times = S.reminders.filter((x) => x.recordId === r.id && x.medicineIndex === index).map((x) => x.time);
-          return `<article class="reminder-row"><div><b>${esc(m.name || "Medicine")}</b><small>${esc([m.strength || m.dosage, m.frequency, m.timing].filter(Boolean).join(" · ") || "Follow the prescription instructions")}</small><small class="reminder-caveat">${times.length ? `Reminder set for ${esc(times.join(", "))} each day` : "No exact clock time was stated, so no time-based reminder was set."}</small></div></article>`;
+        const medicineCards = medicineEntries.map(({ record: r, medicine: m, index }) => {
+          const confirmed = r.medicinesConfirmed && m.userVerified && !m.needsReview && m.name && m.name.toLowerCase() !== "illegible";
+          const times = confirmed ? S.reminders.filter((x) => x.recordId === r.id && x.medicineIndex === index).map((x) => x.time) : [];
+          const schedule = [m.strength || m.dosage, m.form, m.frequency, m.timing, m.duration, m.instructions].filter(Boolean).join(" · ");
+          const source = `${r.title || r.recordType || "Prescription"}${r.date ? ` · ${r.date}` : " · date not shown"}`;
+          const status = r.confirmedByUserAt && confirmed ? "Reviewed by you" : confirmed ? "Read clearly · verify with your clinician" : "Needs review";
+          return `<article class="reminder-row medication-entry ${confirmed ? "is-confirmed" : "needs-review"}"><div class="medication-entry-head"><b>${esc(m.name && m.name.toLowerCase() !== "illegible" ? m.name : "Medicine name unclear")}</b><span class="medication-status ${confirmed ? "confirmed" : "review"}">${esc(status)}</span></div><small>${esc(schedule || "Dose, timing, or other instructions not stated in the upload.")}</small>${m.sourceText || m.rawText ? `<small class="medication-source">As written: ${esc(m.sourceText || m.rawText)}</small>` : ""}<small class="medication-source">From ${esc(source)}</small>${times.length ? `<small class="reminder-caveat">Reminder: ${esc(times.join(", "))} while Mr.Doc is open</small>` : confirmed ? `<small class="reminder-caveat">No exact clock time was stated; no time-based reminder is set.</small>` : `<button class="btn-sm btn-sec medication-review-button" type="button" data-med-review-record="${esc(r.id)}">Review this prescription</button>`}</article>`;
         }).join("");
+        const visitRecords = personalRecords()
+          .slice()
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const visitRecordRows = visitRecords.slice(0, 8).map((r) =>
+          `<li><b>${esc(r.date || "Date not shown")}</b> · ${esc(r.recordType || "Medical record")}: ${esc(r.title || "Untitled record")}${r.facility ? ` · ${esc(r.facility)}` : ""}${r.diagnoses?.length ? `<br><span>Conditions written in record: ${esc(r.diagnoses.join(", "))}</span>` : ""}</li>`,
+        ).join("");
+        const visitMedicines = visitRecords.flatMap((r) =>
+          (r.medicines || [])
+            .filter((m) => r.medicinesConfirmed && m.userVerified && !m.needsReview && m.name && m.name.toLowerCase() !== "illegible")
+            .map((m) => `<li><b>${esc(m.name)}</b>${m.strength || m.dosage ? ` · ${esc(m.strength || m.dosage)}` : ""}${[m.frequency, m.timing, m.duration].filter(Boolean).length ? ` · ${esc([m.frequency, m.timing, m.duration].filter(Boolean).join(" · "))}` : ""}<br><span>${r.confirmedByUserAt ? "Reviewed by you" : "Read clearly by OCR"} · ${esc(r.title || r.recordType || "uploaded record")}${r.date ? ` · ${esc(r.date)}` : " · date not shown"}</span></li>`),
+        ).slice(0, 12).join("");
+        const visitLabs = visitRecords.flatMap((r) =>
+          (r.labTests || []).filter((t) => !t.needsReview).map((t) => ({ record: r, test: t })),
+        ).slice(0, 16).map(({ record: r, test: t }) =>
+          `<li><b>${esc(t.test || "Test")}</b>: ${esc([t.value, t.unit].filter(Boolean).join(" ") || "Value not available")}${t.status && t.status !== "UNKNOWN" ? ` · ${esc(t.status)} as recorded` : ""}<br><span>${esc(r.date || "Date not shown")} · ${esc(r.title || r.recordType || "Uploaded record")}${t.referenceRange ? ` · Reference range as printed: ${esc(t.referenceRange)}` : ""}</span></li>`,
+        ).join("");
+        const visitSummaryHtml = `<section class="doctor-visit-summary" id="doctor-visit-summary" aria-labelledby="doctor-visit-summary-title">
+          <div class="doctor-visit-summary-toolbar"><div><h2 id="doctor-visit-summary-title">Doctor visit summary</h2><p>Prepared from your uploaded records. Check it before sharing.</p></div><button class="btn-sm btn-pri" type="button" id="print-visit-summary" ${visitRecords.length ? "" : "disabled"}>Print summary</button></div>
+          <div class="doctor-visit-summary-sheet"><header><h2>Health record summary</h2><p>Generated ${new Date().toLocaleDateString()}</p></header>
+            ${S.profile?.name ? `<p><b>Profile name:</b> ${esc(S.profile.name)}</p>` : ""}
+            <h3>Recent uploaded records</h3>${visitRecordRows ? `<ul>${visitRecordRows}</ul>` : `<p>No uploaded records yet.</p>`}
+            <h3>Medicines read clearly or reviewed from prescriptions</h3>${visitMedicines ? `<ul>${visitMedicines}</ul>` : `<p>No confirmed medicine details are available in the uploaded records.</p>`}
+            <h3>Recorded lab results</h3>${visitLabs ? `<ul>${visitLabs}</ul>` : `<p>No lab results are available in the uploaded records.</p>`}
+            <p class="doctor-visit-summary-note">This is an automatically assembled record summary, not a diagnosis or treatment plan. Medicines listed here may not be current; confirm them with your clinician.</p>
+          </div>
+        </section>`;
         el.innerHTML = `<header class="health-details-header"><h1 class="page-title">Health details &amp; progress</h1><p class="page-desc">A place to understand what your records say and keep your own progress notes. Document findings are shown separately from details you add.</p></header>
           ${record ? `<section class="health-record-summary"><div><span class="health-source-tag">From your selected record · ${esc(record.date || "date not shown")}</span><h2>${esc(record.title || record.recordType)}</h2><p>${esc(record.summary || "No plain-language summary was extracted.")}</p>${record.diagnoses?.length ? `<p><b>Condition or diagnosis written in record:</b> ${esc(record.diagnoses.join(" · "))}</p>` : `<p><b>No diagnosis was clearly extracted.</b> This app will not guess the injury or condition from an unclear document.</p>`}${record.bodySite ? `<p><b>Body area stated in the document:</b> ${esc(record.bodySite)}</p>` : ""}${record.injuryDescription ? `<p><b>Injury described in the document:</b> ${esc(record.injuryDescription)}</p>` : ""}${record.cause ? `<p><b>Cause stated in the document:</b> ${esc(record.cause)}</p>` : ""}${record.abnormalExplanation ? `<details><summary>What the report says about results</summary><p>${esc(record.abnormalExplanation)}</p><small>Lab reference ranges can vary and results need your clinician’s context.</small></details>` : ""}<button class="btn-sm btn-pri" type="button" id="ask-record-guidance">Help me understand this</button></div><button class="btn-sm btn-sec" type="button" id="details-view-record">View original record</button></section>` : `<section class="health-record-summary"><div><h2>Choose a report for its details</h2><p>Upload or open a medical record to see the extracted information here.</p></div><button class="btn-sm btn-pri" type="button" id="details-go-records">Open records</button></section>`}
           <section class="health-tracker-section"><div class="health-section-head"><div><h2>Injuries &amp; conditions from your uploads</h2><p>This tracker uses details explicitly stated in your records. Missing dates, areas, and severity stay blank rather than being guessed or requested again.</p></div></div>
             <div class="health-items-list">${itemCards || `<p class="empty-health-tracker">No injury or condition details found in your uploaded records yet.</p>`}</div>
           </section>
-          <section class="health-reminders-section"><div><h2>Medicine reminders</h2><p>Reminders are created only when the upload clearly states an exact clock time. They run while Mr.Doc is open; unclear times are never guessed.</p></div>${medicineCards || `<p class="empty-health-tracker">No confirmed medicine details with exact times in your uploaded records.</p>`}</section>
+          ${visitSummaryHtml}
+          <section class="health-reminders-section"><div><h2>Medicines from uploaded prescriptions</h2><p>Each entry shows whether the OCR read it clearly or it still needs review. Only confirmed medicines are used for reminders.</p></div>${medicineCards || `<p class="empty-health-tracker">No medicine details found in your uploaded records yet.</p>`}</section>
           <p class="health-safety-note">Mr.Doc helps organize information; it cannot confirm a diagnosis, judge injury severity, or replace your clinician. For urgent symptoms or a serious injury, contact local medical services.</p>`;
         $("#details-view-record")?.addEventListener("click", () => switchPage("records"));
         $("#details-go-records")?.addEventListener("click", () => switchPage("records"));
@@ -928,6 +924,17 @@
           item.healed = !item.healed; item.healedAt = item.healed ? new Date().toISOString() : ""; save(); renderHealthDetailsPage();
         }));
         el.querySelectorAll("[data-record-open]").forEach((button) => button.addEventListener("click", () => { S.curRecord = button.dataset.recordOpen; save(); switchPage("records"); }));
+        el.querySelectorAll("[data-med-review-record]").forEach((button) => button.addEventListener("click", () => {
+          S.curRecord = button.dataset.medReviewRecord;
+          save();
+          switchPage("records");
+          const reviewDisclosure = $("#page-records-content .ocr-correction-disclosure");
+          if (reviewDisclosure) reviewDisclosure.open = true;
+        }));
+        $("#print-visit-summary")?.addEventListener("click", () => {
+          document.body.classList.add("printing-visit-summary");
+          window.print();
+        });
       }
 
       function checkMedicineReminders() {
@@ -987,12 +994,15 @@
           (curR && (t.doctorQuestions || curR.doctorQuestions)) || [];
         const isOcrRecord =
           !!selected && String(selected.id).startsWith("REC-OCR-");
+        const sourceLanguageNames = { en: "English", hi: "Hindi", te: "Telugu", ta: "Tamil", other: "Other" };
+        const detectedSourceLanguages = (curR?.sourceLanguages || [])
+          .map((language) => sourceLanguageNames[language])
+          .filter(Boolean);
         const needsOcrUpdate = isOcrRecord && selected.ocrVersion < 2;
         const previewUrl = selected ? recordPreviews.get(selected.id) : "";
         const needsDocumentReview =
           isOcrRecord &&
-          !!selected?.reviewRequired &&
-          !selected.documentReviewed;
+          !!selected?.reviewRequired;
 
         // Simplified abnormal watch items per user instruction
         let abnormalItems = [];
@@ -1000,9 +1010,10 @@
           abnormalItems = curR.labTests
             .filter(
               (ts) =>
+                !ts.needsReview && (
                 ts.status === "HIGH" ||
                 ts.status === "LOW" ||
-                ts.status === "CRITICAL",
+                ts.status === "CRITICAL"),
             )
             .map((ts) =>
               ts.test
@@ -1041,7 +1052,7 @@
           <details class="ocr-advanced-disclosure">
             <summary>View extracted text</summary>
             <section class="ocr-transcription" aria-label="Extracted document text">
-              <div class="ocr-transcription-heading"><b>Text extracted from your document</b><span>Compare with the original if needed</span></div>
+              <div class="ocr-transcription-heading"><b>Text extracted from your document</b><span>${detectedSourceLanguages.length ? `Detected source languages: ${esc(detectedSourceLanguages.join(", "))}` : "Source language not confidently identified · compare with the original"}</span></div>
               <div class="ocr-review-layout">
                 ${previewUrl ? `<figure class="ocr-original"><figcaption>Uploaded document</figcaption><img src="${esc(previewUrl)}" alt="Uploaded prescription or report"></figure>` : ""}
                 <div class="ocr-transcription-copy">
@@ -1049,6 +1060,9 @@
                   <p>Handwriting and image quality can affect OCR. Confirm important details with the original document.</p>
                 </div>
               </div>
+              ${selected.ocrReaders?.length ? `<p class="note">Readers used for this upload: ${esc(selected.ocrReaders.join(" + "))}</p>` : ""}
+              ${selected.secondaryOcrText ? `<details class="review-transcription"><summary>Second OCR reading · Unlimited-OCR</summary><pre>${esc(selected.secondaryOcrText)}</pre><p class="note">Independent text reading for comparison. Agreement between readers is not a clinical verification.</p></details>` : ""}
+              ${["unavailable", "pdf_unavailable", "page_limit"].includes(selected.secondaryOcrStatus) ? `<p class="note">${selected.secondaryOcrStatus === "page_limit" ? "The second reader skipped the PDF because it exceeded its configured page limit." : selected.secondaryOcrStatus === "pdf_unavailable" ? "PDF conversion for the second reader is not installed." : "The second OCR reader was unavailable for this upload."} The primary reading is shown above.</p>` : ""}
             </section>
           </details>
         `
@@ -1096,6 +1110,7 @@
                       <label class="medicine-instructions">Other instructions<input data-med-field="instructions" value="${m.instructions || ""}" autocomplete="off"></label>
                     </div>
                     ${m.sourceText || m.rawText ? `<p class="medicine-source"><b>As written:</b> ${m.sourceText || m.rawText}</p>` : ""}
+                    ${m.reviewReason ? `<p class="ocr-field-review">${m.reviewReason}</p>` : ""}
                     ${m.alternatives?.length ? `<div class="medicine-alternatives"><span>Possible readings — choose only if the original supports it:</span>${m.alternatives.map((option) => `<button type="button" class="medicine-alternative" data-value="${option}">${option}</button>`).join("")}</div>` : ""}
                     <small class="model-confidence-note">Confidence is the model’s estimate, not a validated accuracy score.</small>
                   </article>`;
@@ -1111,6 +1126,7 @@
             : ""
         }
         ${isOcrRecord && selected.medicinesConfirmed ? `<p class="medicine-confirmed-note">Medicine details were read clearly or checked by you. Confirm instructions with your doctor or pharmacist before taking anything.</p>` : ""}
+        ${needsDocumentReview ? `<button class="btn-sm btn-sec" type="button" id="review-flagged-record">Review flagged details</button>` : ""}
         <div class="rec-head">
           <div>
             <span class="rec-tag">${curR.recordType}</span>
@@ -1146,7 +1162,7 @@
           (!isOcrRecord || selected.medicinesConfirmed || isDemo(selected))
             ? `
           <div style="margin-top:4px">
-            <b style="font-size:13.5px;display:block;margin-bottom:4px">💊 Prescribed Medicines (${curR.medicines.length}):</b>
+            <b style="font-size:13.5px;display:block;margin-bottom:4px">Prescribed medicines (${curR.medicines.length})</b>
             <div class="med-row">
               ${curR.medicines
                 .map(
@@ -1187,7 +1203,7 @@
                   <tr>
                     <td><b>${ts.test}</b></td>
                     <td>${ts.value} ${ts.unit}</td>
-                    <td><span class="badge ${ts.status}">${ts.status}</span></td>
+                    <td>${ts.needsReview ? `<span class="ocr-field-review">Needs confirmation</span>` : `<span class="badge ${ts.status}">${ts.status}</span>`}</td>
                   </tr>
                 `,
                   )
@@ -1232,6 +1248,13 @@
     `
         : `<div class="card-box note">Select or upload a record above to view detailed clinical analysis.</div>`
     }
+    <section class="record-data-controls" aria-labelledby="clear-data-title">
+      <div>
+        <h2 id="clear-data-title">Clear saved data</h2>
+        <p>This permanently deletes your medical records, chat history, medicine reminders, health progress, and profile details saved in this browser. This action cannot be undone.</p>
+      </div>
+      <button type="button" id="delete-all-records" class="btn-sm btn-sec">Clear all data</button>
+    </section>
   `;
 
         // Wire up dropzone
@@ -1256,8 +1279,21 @@
           recordQuery = e.target.value;
           renderRecordResults();
         };
+        el.querySelector("#delete-all-records")?.addEventListener("click", () => {
+          if (!window.confirm("Clear all Mr.Doc data saved in this browser? This permanently deletes your medical records, chat history, reminders, health progress, and profile details. This cannot be undone.")) return;
+          try {
+            localStorage.removeItem("carely");
+            localStorage.removeItem("mrdoc_tour_done_v2");
+          } catch (_) {
+            notify("Browser storage could not be cleared. Please try again.", true);
+            return;
+          }
+          recordPreviews.clear();
+          window.location.reload();
+        });
         renderRecordResults();
         updateUploadUI();
+        $("#review-flagged-record")?.addEventListener("click", () => openOcrReview(selected));
         $("#print-record")?.addEventListener("click", () => {
           document.body.classList.add("printing-record");
           window.print();
@@ -1304,6 +1340,7 @@
                 instructions: value("instructions"),
                 userVerified: !!name && name.toLowerCase() !== "illegible",
                 needsReview: !name || name.toLowerCase() === "illegible",
+                reviewReason: name && name.toLowerCase() !== "illegible" ? "" : medicine.reviewReason,
               };
             });
             const diagnoses = el.querySelector("#review-diagnoses")?.value || "";
@@ -1313,7 +1350,8 @@
             selected.cause = el.querySelector("#review-cause")?.value.trim() || "";
             selected.documentReviewed = true;
             if (selected.medicines.length) selected.medicinesConfirmed = true;
-            selected.reviewRequired = selected.reviewItems.length > 0 || selected.medicines.some((medicine) => medicine.needsReview);
+            selected.reviewRequired = selected.reviewItems.length > 0 || selected.medicines.some((medicine) => medicine.needsReview) || selected.labTests.some((test) => test.needsReview);
+            syncReviewedRecordBundle(selected);
             syncAutoReminders(selected);
             selected.confirmedByUserAt = new Date().toISOString();
             save();
@@ -1400,6 +1438,82 @@
         return { dayMonth: dateStr, year: "" };
       }
 
+      function comparableLabNumber(value) {
+        const text = String(value ?? "").trim();
+        if (!/^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/.test(text))
+          return null;
+        const number = Number(text.replace(/,/g, ""));
+        return Number.isFinite(number) ? number : null;
+      }
+
+      function validRecordDate(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return false;
+        const date = new Date(`${value}T00:00:00Z`);
+        return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+      }
+
+      function buildLabTrendGroups(records) {
+        const groups = new Map();
+        records.forEach((record) => {
+          if (!validRecordDate(record.date)) return;
+          const patientKey = String(record.patientName || "")
+            .normalize("NFKC")
+            .toLocaleLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+          if (!patientKey) return;
+          (record.labTests || []).forEach((test) => {
+            if (test.needsReview) return;
+            const label = String(test.test || "").normalize("NFKC").trim();
+            const unit = String(test.unit || "").normalize("NFKC").trim();
+            const numericValue = comparableLabNumber(test.value);
+            if (!label || !unit || numericValue === null) return;
+            const labelKey = label.toLocaleLowerCase().replace(/[\s._-]+/g, " ");
+            const unitKey = unit.toLocaleLowerCase().replace(/[\sµμ]/g, "u");
+            const key = `${patientKey}|${labelKey}|${unitKey}`;
+            if (!groups.has(key)) groups.set(key, { label, unit, points: [] });
+            groups.get(key).points.push({
+              date: record.date,
+              title: record.title || record.recordType || "Medical record",
+              recordId: record.id,
+              value: String(test.value).trim(),
+              numericValue,
+              status: ["NORMAL", "HIGH", "LOW", "CRITICAL"].includes(test.status)
+                ? test.status
+                : "UNKNOWN",
+            });
+          });
+        });
+        return [...groups.values()]
+          .map((group) => ({
+            ...group,
+            points: group.points.sort((a, b) => a.date.localeCompare(b.date)),
+          }))
+          .filter((group) =>
+            group.points.length >= 2 &&
+            new Set(group.points.map((point) => point.date)).size >= 2,
+          )
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      function renderLabTrendComparisons(records) {
+        const groups = buildLabTrendGroups(records);
+        const cards = groups.map((group) => `
+          <article class="lab-trend-card">
+            <header><h3>${esc(group.label)}</h3><span>Recorded unit: ${esc(group.unit)}</span></header>
+            <div class="lab-trend-table-wrap"><table class="lab-trend-table">
+              <thead><tr><th>Date</th><th>Recorded result</th><th>Report</th><th>Recorded flag</th></tr></thead>
+              <tbody>${group.points.map((point) => `<tr><td>${esc(point.date)}</td><td><b>${esc(point.value)} ${esc(group.unit)}</b></td><td>${esc(point.title)}</td><td>${point.status === "UNKNOWN" ? "Not stated" : esc(point.status)}</td></tr>`).join("")}</tbody>
+            </table></div>
+          </article>
+        `).join("");
+        return `<section class="lab-trend-section" aria-labelledby="lab-trend-heading">
+          <div class="lab-trend-heading"><div><h2 id="lab-trend-heading">Lab results over time</h2><p>Side-by-side values from records for the same patient, with the same test name and recorded unit.</p></div></div>
+          ${cards || `<p class="lab-trend-empty">Comparisons appear when two dated reports identify the same patient and contain the same numeric test with the same recorded unit.</p>`}
+          <small class="lab-trend-note">These are the values as recorded in your reports. A change alone does not explain its cause or establish a diagnosis.</small>
+        </section>`;
+      }
+
       function renderTimelinePage() {
         const el = $("#page-timeline-content");
         if (!el) return;
@@ -1415,9 +1529,10 @@
           recs = recs.filter((r) =>
             (r.labTests || []).some(
               (t) =>
+                !t.needsReview && (
                 t.status === "HIGH" ||
                 t.status === "LOW" ||
-                t.status === "CRITICAL",
+                t.status === "CRITICAL"),
             ),
           );
 
@@ -1426,6 +1541,8 @@
       <h2 class="clinical-timeline-title">Unified Health Timeline</h2>
       <p class="clinical-timeline-subtitle">Chronological record of patient consultations, prescriptions, and lab investigations.</p>
     </div>
+
+    ${renderLabTrendComparisons(personalRecords())}
 
     <!-- Segmented Control Tab Bar -->
     <div class="timeline-segmented-bar">
@@ -1448,9 +1565,10 @@
           .map((r) => {
             const abCount = (r.labTests || []).filter(
               (t) =>
+                !t.needsReview && (
                 t.status === "HIGH" ||
                 t.status === "LOW" ||
-                t.status === "CRITICAL",
+                t.status === "CRITICAL"),
             ).length;
             const dateObj = formatTimelineDate(r.date);
             const medCount =
@@ -1562,170 +1680,7 @@
         });
       }
 
-      // 3. FULL PAGE: ABDM / ABHA LOCKER
-      function renderAbhaPage() {
-        const el = $("#page-abha-content");
-        if (!el) return;
-
-        el.innerHTML = `
-    <div class="page-title">🇮🇳 Ayushman Bharat Digital Mission (ABDM)</div>
-    <div class="page-desc">FHIR-formatted demo export. No health network or ABHA account is connected.</div>
-
-    <!-- Official ABHA Card -->
-    <div class="abha-card" style="margin-bottom:20px">
-      <div class="abha-head">
-        <span>GOVERNMENT OF INDIA • AYUSHMAN BHARAT DIGITAL MISSION</span>
-        <span class="abha-badge">Local demo</span>
-      </div>
-      <div class="abha-num">DEMO · Not connected</div>
-      <div class="abha-user">
-        <b>Name:</b> ${esc(S.profile.name || "Demo patient")}<br>
-        <b>Sample ID:</b> ${esc(S.abha.address)}<br>
-        <b>Connection:</b> Not connected to ABDM or a national health repository
-      </div>
-    </div>
-
-    <!-- Gateway Actions -->
-    <div class="card-box">
-      <b style="font-size:14px;display:block;margin-bottom:6px">ABDM Health Gateway Operations</b>
-      <p style="font-size:12.5px;color:var(--mut);margin-top:0">This local demonstration does not connect to ABDM. Sample records can be loaded for preview.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn-sm btn-pri" id="btn-sync-gateway">Load sample records</button>
-        <button class="btn-sm btn-sec" id="btn-relink-gateway">ABHA connection unavailable</button>
-        <button class="btn-sm btn-sec" id="btn-export-fhir-bundle">Download FHIR-formatted JSON</button>
-      </div>
-    </div>
-
-    <!-- Schema Reference -->
-    <div class="card-box">
-      <b style="font-size:14px;display:block;margin-bottom:6px">ABDM FHIR R4 DocumentBundle Specifications</b>
-      <p style="font-size:12.5px;color:var(--mut);line-height:1.5">
-        The local export uses FHIR-style resources. It is a demonstration file and has not been validated or submitted to ABDM:
-        <br>• <b>Composition:</b> Clinical encounter document metadata (SNOMED-CT coded)
-        <br>• <b>Patient:</b> Patient resource with demo identifiers only
-        <br>• <b>Observation:</b> Lab parameters with values, units, and interpretations (LOINC coded)
-        <br>• <b>MedicationRequest:</b> Prescribed medicines with dosages and frequencies
-        <br>• <b>Condition:</b> Diagnosed clinical conditions
-      </p>
-    </div>
-  `;
-
-        // Sync gateway handler
-        el.querySelector("#btn-sync-gateway").onclick = async () => {
-          setExp("think");
-          try {
-            const res = await fetch(CONFIG.abhaEndpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                abhaId: S.abha.address,
-                abhaNumber: S.abha.number,
-              }),
-            });
-            const d = await res.json();
-            if (Array.isArray(d.syncedRecords)) {
-              for (const value of d.syncedRecords) {
-                const record = normalizeRecord(value);
-                if (record && !S.records.some((r) => r.id === record.id))
-                  S.records.push(record);
-              }
-              save();
-            }
-            setExp("happy");
-            notify(
-              "Demonstration records loaded. No ABHA account was connected.",
-            );
-            renderAbhaPage();
-          } catch (e) {
-            setExp("happy");
-            notify("Demo records could not be loaded. Please try again.", true);
-          }
-        };
-
-        el.querySelector("#btn-relink-gateway").onclick = () =>
-          notify("ABHA linking is not available in this local demo.", true);
-
-        // Export FHIR bundle handler
-        el.querySelector("#btn-export-fhir-bundle").onclick = () => {
-          const bundle = {
-            resourceType: "Bundle",
-            type: "collection",
-            id: "ABDM-UNIFIED-HEALTH-EXPORT",
-            timestamp: new Date().toISOString(),
-            entry: S.records.map((r) => {
-              const resource = JSON.parse(JSON.stringify(r.fhirBundle || r));
-              if (Array.isArray(resource.entry)) {
-                let medIndex = 0;
-                resource.entry = resource.entry.filter((item) => {
-                  if (item.resource?.resourceType !== "MedicationRequest")
-                    return true;
-                  const medicine = (r.medicines || [])[medIndex++];
-                  return (
-                    isDemo(r) ||
-                    (!!r.medicinesConfirmed &&
-                      !!medicine?.userVerified &&
-                      !!medicine?.name &&
-                      medicine.name.toLowerCase() !== "illegible")
-                  );
-                });
-              }
-              return { resource };
-            }),
-          };
-          downloadJson("MrDoc_ABDM_FHIR_Records.json", bundle);
-        };
-      }
-
-      // 4. FULL PAGE: TECHNICAL ARCHITECTURE
-      function renderArchPage() {
-        const el = $("#page-arch-content");
-        if (!el) return;
-
-        el.innerHTML = `
-    <div class="page-title">🏗️ Technical Architecture & Data Pipeline</div>
-    <div class="page-desc">End-to-end system blueprint, data flow, OCR components, and ABDM-ready schema.</div>
-
-    <div class="arch-card">
-      <b>1. Multimodal OCR & Clinical Ingestion Layer</b>
-      Reads medical records (prescriptions, lab panels, discharge summaries) with multimodal OCR. It preserves the visible text and common Indian abbreviations for review. Handwriting and image quality can affect the result; uncertain medicine readings are flagged for user confirmation and should be checked with a doctor or pharmacist.
-    </div>
-
-    <div class="arch-card">
-      <b>2. Clinical Entity Normalization & Extraction Pipeline</b>
-      Extracts candidate pharmaceutical and diagnostic fields for review. Prescription text is read twice when the comparison pass is available (original and contrast-enhanced image); agreement can raise the displayed model estimate, while disagreement is flagged. The estimate is not a validated accuracy score, and no medicine is treated as confirmed until the user reviews it:
-      <br>• Medicines: Name, dosage, frequency, administration timing, duration.
-      <br>• Lab Tests: Observed values, units, reference intervals, abnormality flags (NORMAL, HIGH, LOW, CRITICAL).
-      <br>• Diagnoses & clinical notes.
-    </div>
-
-    <div class="arch-card">
-      <b>3. Plain-Language Simplification & Regional Engine</b>
-      Translates dense medical jargon into warm, empathetic 1-to-3 sentence plain language explanations. Directly explains what each out-of-range value means and provides actionable dietary and lifestyle advice across English, Hindi, Telugu, and Tamil.
-    </div>
-
-    <div class="arch-card">
-      <b>4. ABDM Standards & FHIR R4 Mapping</b>
-      Transforms extracted clinical data into National Resource Center for EHR Standards (NRCeS) FHIR R4 DocumentBundles. Features mock ABHA ID authentication and interoperable JSON export.
-    </div>
-
-    <div class="arch-card">
-      <b>5. Storage, Security & Privacy Architecture</b>
-      Records are saved in this browser’s local storage, which is not encrypted by the app. Uploaded reports and chat context are sent to the configured AI provider. ABHA linking is a demonstration.
-    </div>
-
-    <div class="arch-card">
-      <b>6. Hackathon Evaluation Alignment (100 Points Covered)</b>
-      • <b>AI Utilization (35%):</b> Multimodal OCR + Clinical Extraction + Abnormal Explanations.<br>
-      • <b>Technical Architecture (25%):</b> Robust pipeline + NRCeS FHIR R4 DocumentBundle schema.<br>
-      • <b>User Experience (20%):</b> Hamburger navigation, spacious full pages, top suggestions, big upload button.<br>
-      • <b>Healthcare Impact (10%):</b> Safe communication, no hallucinated diagnosis, emergency disclaimers.<br>
-      • <b>Presentation & Demo (10%):</b> One-click demo test cases + live speech playback.<br>
-      • <b>Bonus Credit:</b> Multi-language support (Hindi, Telugu, Tamil) + ABDM/ABHA readiness.
-    </div>
-  `;
-      }
-
-      // 5. FULL PAGE: MY HEALTH PROFILE
+      // FULL PAGE: MY HEALTH PROFILE
       function renderProfilePage() {
         const el = $("#page-me-content");
         if (!el) return;
@@ -1768,7 +1723,7 @@
         const flags = [];
         recs.forEach((r) =>
           (r.labTests || []).forEach((t) => {
-            if (isFlag(t)) flags.push({ ...t, rid: r.id });
+            if (!t.needsReview && isFlag(t)) flags.push({ ...t, rid: r.id });
           }),
         );
         const recent = [...recs]
@@ -2197,6 +2152,49 @@
           URL.revokeObjectURL(source.src);
         }
       }
+      function applyReviewedLabValue(record, fieldName, value) {
+        const match = /^lab:(\d+):(value|unit)$/.exec(fieldName);
+        if (!match || !String(value).trim()) return null;
+        const index = Number(match[1]);
+        const test = record.labTests[index];
+        if (!test) return null;
+        const field = match[2];
+        if (test[field] !== value) { test.status = "UNKNOWN"; test.interpretation = ""; }
+        test[field] = value;
+        return index;
+      }
+
+      function syncReviewedRecordBundle(record) {
+        let index = 0;
+        let medicineIndex = 0;
+        (record.fhirBundle?.entry || []).forEach((entry) => {
+          const resource = entry.resource;
+          if (resource?.resourceType === "MedicationRequest") {
+            const medicine = record.medicines[medicineIndex++];
+            if (!medicine) return;
+            resource.medicationCodeableConcept = { text: medicine.name || "Unclear medicine" };
+            resource.dosageInstruction = [{ text: [medicine.strength || medicine.dosage, medicine.frequency, medicine.timing, medicine.duration, medicine.instructions].filter(Boolean).join(" · ") }];
+            return;
+          }
+          if (resource?.resourceType !== "Observation") return;
+          const test = record.labTests[index++];
+          if (!test) return;
+          delete resource.valueQuantity;
+          delete resource.valueString;
+          const number = comparableLabNumber(test.value);
+          if (number === null) resource.valueString = test.value || "Not recorded";
+          else resource.valueQuantity = { value: number, unit: test.unit || "" };
+          resource.status = test.needsReview ? "preliminary" : "final";
+          resource.code = { text: test.test || "Lab result" };
+          resource.referenceRange = [{ text: test.referenceRange || "" }];
+          resource.interpretation = [{ text: test.status || "UNKNOWN" }];
+          const pendingNote = "OCR value awaiting confirmation against the original report.";
+          resource.note = (resource.note || []).filter((note) => note.text !== pendingNote);
+          if (test.needsReview) resource.note.push({ text: pendingNote });
+          if (!resource.note.length) delete resource.note;
+        });
+      }
+
       function openOcrReview(record) {
         const overlay = $("#ocr-review-overlay");
         const content = $("#ocr-review-content");
@@ -2205,10 +2203,18 @@
         const medicines = record.medicines
           .map((medicine, index) => ({ medicine, index }))
           .filter(({ medicine }) => medicine.needsReview);
+        const reviewFieldLabel = (item, index) => {
+          if (item.field.startsWith("lab:")) {
+            const [, testIndex, field] = item.field.split(":");
+            return `${record.labTests[Number(testIndex)]?.test || "Lab result"} · ${field === "unit" ? "unit" : "result"}`;
+          }
+          return ({ bodySite: "Body area", diagnoses: "Condition in the document", injuryDescription: "Injury description", cause: "Cause", injuryStartDate: "Start date", documentedSeverity: "Severity stated in the document" })[item.field] || item.field || `Unclear detail ${index + 1}`;
+        };
         const medicineMarkup = medicines.map(({ medicine, index }) => `
           <article class="ocr-uncertain-item" data-review-med="${index}">
             <h3>Medicine details to check</h3>
             <p><b>As written:</b> ${esc(medicine.sourceText || medicine.rawText || "No clear line was read")}</p>
+            ${medicine.reviewReason ? `<p class="ocr-field-review">${esc(medicine.reviewReason)}</p>` : ""}
             <div class="ocr-uncertain-fields">
               <label>Name<input data-med-field="name" value="${esc(medicine.name)}"></label>
               <label>Strength / dose<input data-med-field="strength" value="${esc(medicine.strength || medicine.dosage)}"></label>
@@ -2220,7 +2226,7 @@
             ${medicine.alternatives?.length ? `<div class="medicine-alternatives"><span>Possible readings from the image:</span>${medicine.alternatives.map((option) => `<button type="button" class="medicine-alternative" data-med-alternative="${index}" data-value="${esc(option)}">${esc(option)}</button>`).join("")}</div>` : ""}
           </article>`).join("");
         const fieldMarkup = record.reviewItems.map((item, index) => `
-          <article class="ocr-uncertain-item" data-review-generic="${index}"><h3>${esc(item.field || `Unclear detail ${index + 1}`)}</h3>
+          <article class="ocr-uncertain-item" data-review-generic="${index}"><h3>${esc(reviewFieldLabel(item, index))}</h3>
           ${item.reason ? `<p>${esc(item.reason)}</p>` : ""}
           ${item.sourceText ? `<p><b>As written:</b> ${esc(item.sourceText)}</p>` : ""}
           <label>Your correction<input data-review-field="${esc(item.field)}" data-review-index-value="${index}" value="${esc(item.value)}"></label>
@@ -2256,6 +2262,7 @@
             med.timing = value("timing"); med.duration = value("duration");
             med.userVerified = Boolean(med.name) && med.name.toLowerCase() !== "illegible";
             med.needsReview = !med.userVerified;
+            if (med.userVerified) med.reviewReason = "";
           });
           content.querySelectorAll("[data-review-field]").forEach((input) => {
             const field = input.dataset.reviewField;
@@ -2263,6 +2270,7 @@
             if (field === "bodySite" || field === "injuryDescription" || field === "cause" || field === "injuryStartDate") record[field] = value;
             else if (field === "diagnoses") record.diagnoses = value.split(",").map((item) => item.trim()).filter(Boolean);
           });
+          const reviewedLabIndices = new Set();
           record.reviewItems = record.reviewItems.filter((item, index) => {
             const input = content.querySelector(`[data-review-index-value="${index}"]`);
             const value = input?.value.trim() || "";
@@ -2271,6 +2279,13 @@
             if (["bodySite", "injuryDescription", "cause", "injuryStartDate"].includes(item.field)) { record[item.field] = value; applied = true; }
             else if (item.field === "documentedSeverity" && ["low", "medium", "serious"].includes(value.toLowerCase())) { record.documentedSeverity = value.toLowerCase(); applied = true; }
             else if (item.field === "diagnoses") { record.diagnoses = value.split(",").map((entry) => entry.trim()).filter(Boolean); applied = true; }
+            else if (item.field.startsWith("lab:")) {
+              const testIndex = applyReviewedLabValue(record, item.field, value);
+              if (testIndex !== null) {
+                reviewedLabIndices.add(testIndex);
+                applied = true;
+              }
+            }
             else if (item.field.startsWith("medicine:")) {
               const [, indexText, field] = item.field.split(":");
               const medicine = record.medicines[Number(indexText)];
@@ -2278,14 +2293,22 @@
             }
             return !applied;
           });
+          reviewedLabIndices.forEach((index) => {
+            const test = record.labTests[index];
+            test.needsReview = record.reviewItems.some((item) => item.field.startsWith(`lab:${index}:`));
+            test.userVerified = !test.needsReview;
+          });
+          syncReviewedRecordBundle(record);
           record.documentReviewed = true;
-          record.reviewRequired = record.reviewItems.length > 0 || record.medicines.some((medicine) => medicine.needsReview) || (transcriptOnlyReview && /\[unclear\]/i.test(record.verbatimTranscription));
+          if (medicines.length) record.confirmedByUserAt = new Date().toISOString();
+          record.reviewRequired = record.reviewItems.length > 0 || record.medicines.some((medicine) => medicine.needsReview) || record.labTests.some((test) => test.needsReview) || (transcriptOnlyReview && /\[unclear\]/i.test(record.verbatimTranscription));
           record.medicinesConfirmed = record.medicines.length > 0 && record.medicines.every((medicine) => medicine.userVerified && !medicine.needsReview);
           syncAutoReminders(record);
           save();
           overlay.hidden = true;
           renderChat();
           if (activePage === "details") renderHealthDetailsPage();
+          if (activePage === "records") renderRecordsPage();
           notify(record.reviewRequired ? "Saved. Any unresolved fields remain marked so they won’t be used as confirmed information." : "Corrections saved to your record.");
         };
         content.querySelectorAll("[data-med-alternative]").forEach((button) => button.onclick = () => {
@@ -2344,32 +2367,6 @@
         else setExp("supportive", 1600);
       }
 
-      function showFhirModal(record) {
-        const win = window.open("", "_blank", "width=700,height=600");
-        if (!win)
-          return notify("Allow popups to view the record export.", true);
-        win.opener = null;
-        win.document.title = "Mr.Doc record export";
-        const pre = win.document.createElement("pre");
-        pre.style.cssText =
-          "white-space:pre-wrap;overflow-wrap:anywhere;padding:24px";
-        pre.textContent = JSON.stringify(record.fhirBundle || record, null, 2);
-        win.document.body.append(pre);
-      }
-      function downloadJson(filename, obj) {
-        const url = URL.createObjectURL(
-          new Blob([JSON.stringify(obj, null, 2)], {
-            type: "application/json",
-          }),
-        );
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.append(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
       let curAudio = null,
         speechActive = false,
         speechDone = null;
@@ -2740,6 +2737,7 @@
         r.onend = () => {
           listening = false;
           micBtn.classList.remove("on");
+          micBtn.setAttribute("aria-pressed", "false");
           if (!busy) setExp("happy");
         };
         micBtn.onclick = () => {
@@ -2754,51 +2752,11 @@
             r.start();
             listening = true;
             micBtn.classList.add("on");
+            micBtn.setAttribute("aria-pressed", "true");
             setExp("look");
           } catch (e) {}
         };
       }
-
-      // Liquid-metal orb: iframe click -> existing mic handler; .on class -> orb listening state
-      (function () {
-        const frame = document.getElementById("orb-frame");
-        if (!frame) return;
-        frame.src = "assets/voice-orb.html";
-        const mic = document.getElementById("mic");
-        const post = () => {
-          try {
-            frame.contentWindow.postMessage(
-              {
-                orb: { type: "listening", value: mic.classList.contains("on") },
-              },
-              "*",
-            );
-          } catch (e) {}
-        };
-        window.addEventListener("message", (e) => {
-          if (e.source !== frame.contentWindow || !e.data || !e.data.orb)
-            return;
-          if (e.data.orb.type === "activate") mic.click();
-          if (e.data.orb.type === "nogl")
-            mic.innerHTML =
-              '<span style="font-size:22px;line-height:48px;display:block;text-align:center">🎙️</span>';
-        });
-        new MutationObserver(post).observe(mic, {
-          attributes: true,
-          attributeFilter: ["class"],
-        });
-      })();
-      // Keyboard access for the orb (Enter / Space start and stop listening)
-      (function () {
-        const mic = document.getElementById("mic");
-        if (!mic || mic.tagName === "BUTTON") return;
-        mic.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            mic.click();
-          }
-        });
-      })();
 
       // Smooth spring caret for every single-line text input.
       // Behaviour modelled on Skiper UI "Smooth caret input" (skiper106): https://skiper-ui.com/v1/skiper106
@@ -2967,7 +2925,7 @@
       $("#drawer").inert = true;
       if (storageWarning) notify(storageWarning, true);
       window.addEventListener("afterprint", () =>
-        document.body.classList.remove("printing-record"),
+        document.body.classList.remove("printing-record", "printing-visit-summary"),
       );
 
       // A single introduction occupies the viewport; the landing illustration hides during playback.
@@ -3176,12 +3134,12 @@
             page: "me",
             place: "right",
             title: "Your health profile",
-            text: "Fill this in once and Mr.Doc can give more relevant answers.",
+            text: "See details from your saved records and add personal notes if you want to.",
           },
           {
             sel: null,
             title: "You're all set!",
-            text: 'That\'s the tour. You can replay it any time from the top bar ("Tutorial") or menu ("Take Interactive Tutorial").',
+            text: 'That\'s the tour. You can replay it any time from the top bar using "Tutorial".',
           },
         ];
 
@@ -3508,13 +3466,6 @@
             ),
           );
         };
-
-        const replay = document.getElementById("replay-tour");
-        if (replay)
-          replay.onclick = () => {
-            openDrawer(false);
-            setTimeout(() => window.startTour(true), 300);
-          };
 
         const topTut = document.getElementById("top-tutorial-btn");
         if (topTut) topTut.onclick = () => window.startTour(true);

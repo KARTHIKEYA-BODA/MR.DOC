@@ -1,1 +1,2 @@
-# Standard library only (no external packages needed)
+# Core app and image OCR connector: standard library only.
+# Optional Unlimited-OCR PDF rendering: requirements-unlimited-ocr.txt.

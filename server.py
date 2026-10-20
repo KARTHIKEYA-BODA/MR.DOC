@@ -3,7 +3,7 @@ Features:
 - Medical Record Intelligence & Multimodal OCR (Prescriptions, Lab Reports, Discharge Summaries)
 - Plain-Language Summaries & Explanations of Abnormal Test Values
 - Multi-Language Support (English, Hindi, Telugu, Tamil)
-- Local FHIR-formatted demo export (no ABDM / ABHA connection)
+- FHIR-style structured record data (not profile-validated; no ABDM / ABHA connection)
 - Character Chat & Gemini AI Speech Synthesis
 """
 import base64
@@ -13,10 +13,13 @@ from urllib.parse import urlsplit, unquote
 import json
 import os
 import re
+import time
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from unlimited_ocr import UnlimitedOCRClient, PDFReaderUnavailable, PDFPageLimitExceeded, apply_secondary_review
 
 # Load simple .env file if present
 def load_env():
@@ -41,6 +44,7 @@ ANTHROPIC_MODEL = os.environ.get("CARELY_MODEL", "claude-sonnet-5-5")
 GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-3.8-flash-tts")
 GEMINI_TTS_VOICE = os.environ.get("GEMINI_TTS_VOICE", "Puck")
 PORT = int(os.environ.get("PORT", "8000"))
+SECONDARY_OCR_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="unlimited-ocr")
 
 SYSTEM_PROMPT = (
     "You are Mr.Doc, a warm, caring virtual health assistant and friendly chibi doctor. "
@@ -184,7 +188,7 @@ def call_gemini_tts(text: str) -> str:
         print(f"[Gemini TTS] Request failed: {e}", flush=True)
     return ""
 # ---------------------------------------------------------------------------
-# ABDM FHIR R4 Bundle Builder (National Health Authority Standard)
+# FHIR-style demonstration bundle builder (not profile-validated or an official ABDM export)
 # ---------------------------------------------------------------------------
 def build_fhir_bundle(record: dict) -> dict:
     rec_id = record.get("id") or str(uuid.uuid4())[:8]
@@ -273,7 +277,8 @@ def build_fhir_bundle(record: dict) -> dict:
             "fullUrl": f"urn:uuid:obs-{uuid.uuid4().hex[:6]}",
             "resource": {
                 "resourceType": "Observation",
-                "status": "final",
+                "status": "preliminary" if test.get("needsReview") else "final",
+                **({"note": [{"text": "OCR value awaiting confirmation against the original report."}]} if test.get("needsReview") else {}),
                 "code": {
                     "coding": [{"system": "http://loinc.org", "display": test.get("test")}],
                     "text": test.get("test")
@@ -471,10 +476,9 @@ SAMPLE_RECORDS = {
     }
 }
 
-# Attach ABDM FHIR R4 Bundle to each sample record
+# Attach FHIR-style demonstration bundles to sample records
 for k, rec in SAMPLE_RECORDS.items():
     rec["isDemo"] = True
-    rec["abhaNumber"] = "91-4521-8932-7410"
     rec["fhirBundle"] = build_fhir_bundle(rec)
 
 
@@ -561,6 +565,12 @@ def normalize_record(value):
         record["injuryStartDate"] = ""
     record["reviewRequired"] = bool(value.get("reviewRequired", False)) or bool(record["reviewItems"]) or any(m.get("needsReview") for m in record["medicines"]) or "[unclear]" in record["verbatimTranscription"].casefold()
     record["imageQuality"] = value.get("imageQuality") if value.get("imageQuality") in ("good", "fair", "poor") else "unknown"
+    source_languages = value.get("sourceLanguages", [])
+    allowed_languages = {"en", "hi", "te", "ta", "other"}
+    record["sourceLanguages"] = list(dict.fromkeys(
+        language for language in source_languages
+        if isinstance(language, str) and language in allowed_languages
+    ))[:5] if isinstance(source_languages, list) else []
     record["medicinesConfirmed"] = bool(value.get("medicinesConfirmed", False))
     record["ocrVersion"] = 2 if record["verbatimTranscription"] else 0
     record["isDemo"] = False
@@ -568,18 +578,72 @@ def normalize_record(value):
 
 
 def analyze_uploaded_image(image_b64: str, mime_type: str, target_lang: str = "en", compare_image_b64: str = "") -> dict:
+    """Read structured fields and optionally compare an independent OCR transcription."""
+    if not GEMINI_KEY:
+        raise RuntimeError("Document analysis is not configured. Add a Gemini API key on the server, then try again.")
+    deadline = time.monotonic() + 115
+    secondary = None
+    status = "not_configured"
+    try:
+        client = UnlimitedOCRClient.from_env()
+        if client.configured:
+            status = "unavailable"
+            secondary = SECONDARY_OCR_POOL.submit(client.transcribe, image_b64, mime_type)
+    except (ValueError, TypeError):
+        # A malformed optional setting must not disable the existing upload flow.
+        status = "unavailable"
+    try:
+        record = _analyze_with_gemini(image_b64, mime_type, target_lang, compare_image_b64, deadline)
+    except Exception:
+        if secondary:
+            secondary.cancel()
+        raise
+    record["ocrReaders"] = ["Gemini Vision"]
+    record["secondaryOcrStatus"] = status
+    if secondary:
+        try:
+            text = secondary.result(timeout=max(0, deadline - time.monotonic()))
+            apply_secondary_review(record, text)
+            if any(test.get("needsReview") for test in record.get("labTests", [])):
+                # Do not repeat uncorroborated numbers or their old interpretation in chat/audio.
+                record["summary"] = {
+                    "en": "Your report text is ready. Open the full result to review the recorded test values and units.",
+                    "hi": "आपकी रिपोर्ट का पाठ तैयार है। जाँच के मान और इकाइयाँ देखने के लिए पूरा परिणाम खोलें।",
+                    "te": "మీ నివేదికలోని పాఠ్యం సిద్ధంగా ఉంది. పరీక్ష విలువలు మరియు యూనిట్లను చూడటానికి పూర్తి ఫలితాన్ని తెరవండి.",
+                    "ta": "உங்கள் அறிக்கையின் உரை தயாராக உள்ளது. பரிசோதனை மதிப்புகள் மற்றும் அலகுகளைப் பார்க்க முழு முடிவைத் திறக்கவும்.",
+                }.get(target_lang, "Your report text is ready. Open the full result to review the recorded test values and units.")
+                record["abnormalExplanation"] = ""
+                record["selfCareTips"] = []
+                record["doctorQuestions"] = []
+            record["fhirBundle"] = build_fhir_bundle(record)
+        except PDFReaderUnavailable:
+            record["secondaryOcrStatus"] = "pdf_unavailable"
+        except PDFPageLimitExceeded:
+            record["secondaryOcrStatus"] = "page_limit"
+        except Exception:
+            record["secondaryOcrStatus"] = "unavailable"
+        finally:
+            secondary.cancel()
+    return record
+
+
+def _analyze_with_gemini(image_b64: str, mime_type: str, target_lang: str = "en", compare_image_b64: str = "", deadline=None) -> dict:
     """Uses Gemini Vision (multimodal) to extract structured clinical data from medical records."""
     if not GEMINI_KEY:
         raise RuntimeError("Document analysis is not configured. Add a Gemini API key on the server, then try again.")
+    deadline = deadline if deadline is not None else time.monotonic() + 115
     lang_name = {"hi": "Hindi", "te": "Telugu", "ta": "Tamil"}.get(target_lang, "English")
     prompt = f"""You are transcribing a possibly handwritten or low-quality medical document. This is OCR, not diagnosis or treatment advice.
-Perform these steps in order: first transcribe visible lines verbatim in their original language and line order; then extract structured fields only from that transcription and the image. Preserve spelling, punctuation, symbols, abbreviations and shorthand such as OD/BD/TDS/QID/SOS/HS/AC/PC, 1-0-1, Tab./Cap./Syp./Inj. and x 5 days. Keep the exact written notation; do not expand or normalize it unless the document itself does so.
-For each medicine include its complete line in rawText and sourceText. Extract name, strength, form, dosage, frequency, timing, duration and instructions only when visible. If a medicine name is uncertain, set name to "illegible", give up to three plausible alternatives, and set confidence below 0.5. If a field cannot be read, use an empty string and mark that part [unclear] in the transcription. Never guess or silently correct a name.
+Perform these steps in order: first transcribe every readable line verbatim in its original script, language, and line order; then extract structured fields only from that transcription and the image. A document may mix English with Hindi (Devanagari), Telugu, Tamil, or another script: preserve each part in the script in which it appears, and do not translate the verbatim transcription into the requested summary language. Do not treat a regional-language name as an English medicine name based only on a similar sound or likely context. Preserve spelling, punctuation, symbols, abbreviations and shorthand such as OD/BD/TDS/QID/SOS/HS/AC/PC, 1-0-1, Tab./Cap./Syp./Inj. and x 5 days. Keep the exact written notation; do not expand or normalize it unless the document itself does so.
+For each medicine include its complete original-script line in rawText and sourceText. Extract name, strength, form, dosage, frequency, timing, duration and instructions only when visible. If a medicine name is uncertain in any language or script, set name to "illegible", give up to three plausible alternatives only when the visible letters support them, and set confidence below 0.5. If a field or script cannot be read reliably, use an empty string and mark that part [unclear] in the transcription. Never guess, transliterate an uncertain name into a confident medicine, or silently correct a name.
 Set each medicine confidence to your visual-reading confidence from 0.0 to 1.0. This is a model estimate, not a calibrated accuracy guarantee. Set imageQuality to good, fair, or poor based on legibility. Set reminderTimes only for exact 24-hour clock times (HH:MM) explicitly printed beside that medicine; never convert shorthand such as 1-0-1, BD, morning, or after food into clock times. Set reviewRequired true only when a key value is unclear or uncertain (including medicine details, diagnosis, body area, injury start/cause, or important test values); otherwise false. For every unclear non-medicine field add a reviewItems entry with field, current reading, exact source text, short reason, and possible readings if visible. Use canonical field names: diagnoses, bodySite, injuryDescription, cause, injuryStartDate, documentedSeverity. Extract injuryStartDate and severity only when explicitly stated; never treat the report date as the injury start date. Do not infer a diagnosis, body area, cause, severity, treatment conclusion, or clinical advice from medicines. The summary should describe only what is visible in the document, in {lang_name}.
+
+Identify the document's source language(s) from visible text only and return language codes in sourceLanguages (en, hi, te, ta, other). For bilingual documents include each confidently detected language once; if unsure, return an empty array. This field describes the source, not the requested summary language.
 
 Return ONLY strict JSON with this schema:
 {{
   "recordType": "Prescription" or "Lab Report" or "Discharge Summary" or "Diagnostic Report",
+  "sourceLanguages": ["en", "hi"],
   "title": "Short descriptive title",
   "facility": "Visible facility or empty string",
   "doctorName": "Visible doctor name or empty string",
@@ -606,6 +670,9 @@ Extract diagnoses and injury details only when explicitly written; never infer t
 
     candidate_models = list(dict.fromkeys([DEFAULT_MODEL, "gemini-3.1-flash-lite"]))
     for model_name in candidate_models:
+        remaining = deadline - time.monotonic()
+        if remaining <= 1:
+            break
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_KEY}"
         payload = {
             "contents": [
@@ -634,7 +701,7 @@ Extract diagnoses and injury details only when explicitly written; never infer t
             headers={"Content-Type": "application/json"}
         )
         try:
-            with urllib.request.urlopen(req, timeout=35) as r:
+            with urllib.request.urlopen(req, timeout=min(35, remaining)) as r:
                 res_data = json.loads(r.read())
             cands = res_data.get("candidates", [])
             if cands:
@@ -656,7 +723,7 @@ Extract diagnoses and injury details only when explicitly written; never infer t
                         # Independent pass on a grayscale/contrast-enhanced rendition. Agreement
                         # modestly raises the model estimate; disagreement always flags review.
                         try:
-                            second = analyze_uploaded_image(compare_image_b64, "image/jpeg", target_lang)
+                            second = _analyze_with_gemini(compare_image_b64, "image/jpeg", target_lang, deadline=deadline)
                         except Exception as compare_error:
                             print(f"[OCR] Comparison pass unavailable: {type(compare_error).__name__}")
                             second = None
@@ -695,7 +762,7 @@ Extract diagnoses and injury details only when explicitly written; never infer t
                 parsed["fhirBundle"] = build_fhir_bundle(parsed)
                 return parsed
         except Exception as e:
-            print(f"[OCR] Error with model {model_name}: {e}, trying fallback...")
+            print(f"[OCR] Primary reading failed ({type(e).__name__}); trying fallback.")
             continue
 
     raise RuntimeError("We could not read this document. Try a clearer image or try again later. No record was added.")
@@ -784,7 +851,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         route = urlsplit(self.path).path
-        if route not in ("/api/chat", "/api/analyze-record", "/api/abha-sync"):
+        if route not in ("/api/chat", "/api/analyze-record"):
             return self.reply(404, {"error": "Unknown endpoint."})
         try:
             data = self.read_json()
@@ -827,15 +894,6 @@ class Handler(SimpleHTTPRequestHandler):
                     record = analyze_uploaded_image(encoded, mime_type, language, processed if mime_type.startswith("image/") else "")
                 audio = call_gemini_tts(record["summary"]) if GEMINI_KEY and data.get("voice", True) else ""
                 return self.reply(200, {"success": True, "record": record, "audio": audio})
-            # This endpoint remains an explicitly labelled local demonstration.
-            return self.reply(200, {
-                "success": True, "demo": True,
-                "abhaAddress": str(data.get("abhaId", ""))[:100],
-                "abhaNumber": str(data.get("abhaNumber", ""))[:30],
-                "status": "DEMO_ONLY", "nhaGateway": "Local mock gateway",
-                "syncedRecords": list(SAMPLE_RECORDS.values()),
-                "message": "Demonstration records loaded. No ABHA account was connected."
-            })
         except (ValueError, UnicodeError) as error:
             return self.reply(400, {"success": False, "error": str(error)})
         except RuntimeError as error:
@@ -864,7 +922,8 @@ if __name__ == "__main__":
     tts_status = f"Gemini TTS ({GEMINI_TTS_VOICE})" if GEMINI_KEY else "Browser Speech"
     print(f"Mr.Doc AI Health Copilot listening on {host}:{PORT}")
     print(f"Open http://localhost:{PORT} in this computer's browser.")
-    print(f"Features: Multimodal OCR | FHIR Export | Multi-Language | Voice ({tts_status})")
+    print(f"Features: Multimodal OCR | FHIR-style record data | Multi-Language | Voice ({tts_status})")
+    print("Unlimited-OCR: " + ("configured; requires a running vLLM OCR service" if os.environ.get("UNLIMITED_OCR_URL", "").strip() else "not configured (Gemini-only reading)"))
     http_server = ThreadingHTTPServer((host, PORT), Handler)
     try:
         http_server.serve_forever()
@@ -872,3 +931,4 @@ if __name__ == "__main__":
         print("\nMr.Doc server stopped.")
     finally:
         http_server.server_close()
+        SECONDARY_OCR_POOL.shutdown(wait=False, cancel_futures=True)

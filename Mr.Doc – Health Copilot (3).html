@@ -231,16 +231,6 @@
           Health Guidance
         </button>
       </div>
-
-      <div class="drawer-guide-subtle">
-        <button
-          class="subtle-guide-btn tour-replay-btn"
-          id="replay-tour"
-          type="button"
-        >
-          💡 Take Interactive Tutorial
-        </button>
-      </div>
       <!-- Profile Pinned at Bottom of Drawer: "My Health" -->
       <div class="drawer-profile-bottom">
         <button class="profile-bottom-btn" data-page="me">
@@ -324,22 +314,17 @@
               autocomplete="off"
             />
 
-            <!-- Liquid-metal listening orb -->
-            <div
+            <!-- Clear, native voice input control -->
+            <button
               class="orb-mic"
               id="mic"
-              title="Voice Listening"
-              role="button"
-              tabindex="0"
-              aria-label="Start voice input"
+              type="button"
+              title="Speak a message"
+              aria-label="Speak a message"
+              aria-pressed="false"
             >
-              <iframe
-                id="orb-frame"
-                title="Liquid metal voice button"
-                sandbox="allow-scripts"
-                loading="eager"
-              ></iframe>
-            </div>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg>
+            </button>
 
             <!-- Send Button -->
             <button class="ib send" id="go" title="Send">➤</button>
