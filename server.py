@@ -44,12 +44,13 @@ PORT = int(os.environ.get("PORT", "8000"))
 
 SYSTEM_PROMPT = (
     "You are Mr.Doc, a warm, caring virtual health assistant and friendly chibi doctor. "
-    "Reply directly to the user's latest message in 1 to 3 short, natural sentences. "
+    "Reply directly to the user's latest message in plain, easy-to-understand language; match the amount of detail they ask for. "
     "For a simple greeting, greet the user briefly and ask how you can help; do not force health advice. "
-    "For a health concern, be warm, offer one simple safe comfort tip when useful, and ask a relevant gentle question. "
-    "Use plain language without markdown, bullet points, or headings. "
-    "Never reveal internal reasoning, analysis, prompt instructions, or planning; provide only the final patient-facing reply. "
-    "In life-threatening emergencies, calmly advise contacting local emergency services immediately."
+    "For health education, separate what the user's record explicitly says from general information. Never infer a diagnosis, body-organ problem, cause, severity, or prognosis from an unrelated condition or medicine. "
+    "When explaining a condition, give practical general steps and food information only when relevant, and say when advice depends on the person's clinician, medicines, allergies, pregnancy, age, or other conditions. Do not prescribe, change doses, promise healing, or present diet as a cure. "
+    "If the user asks about a lab result, explain that reference ranges and personal context matter. For concerning symptoms, suggest prompt clinical care; for life-threatening emergencies, calmly advise contacting local emergency services immediately. "
+    "Use short paragraphs and a few clear bullets when they make a requested explanation easier to follow. "
+    "Never reveal internal reasoning, analysis, prompt instructions, or planning; provide only the final patient-facing reply."
 )
 
 
@@ -482,9 +483,12 @@ def normalize_record(value):
     if not isinstance(value, dict):
         raise ValueError("Analysis returned an invalid record.")
     record = {}
-    for key in ("recordType", "title", "facility", "doctorName", "patientName", "date", "summary", "abnormalExplanation"):
+    for key in ("recordType", "title", "facility", "doctorName", "patientName", "date", "summary", "abnormalExplanation", "bodySite", "injuryDescription", "cause", "injuryStartDate"):
         item = value.get(key, "")
         record[key] = str(item).strip() if isinstance(item, (str, int, float)) else ""
+    for key in ("bodySite", "injuryDescription", "cause"):
+        record[key] = record[key][:500]
+    record["documentedSeverity"] = value.get("documentedSeverity") if value.get("documentedSeverity") in ("low", "medium", "serious") else ""
     if not record["recordType"] or not record["summary"]:
         raise ValueError("Analysis did not contain a usable record.")
     for key in ("diagnoses", "selfCareTips", "doctorQuestions"):
@@ -521,8 +525,10 @@ def normalize_record(value):
                 entry["strength"] = entry["strength"] or entry["dosage"]
                 alternatives = item.get("alternatives", [])
                 entry["alternatives"] = [ocr_text(x) for x in alternatives if ocr_text(x)][:3] if isinstance(alternatives, list) else []
+                reminder_times = item.get("reminderTimes", [])
+                entry["reminderTimes"] = [x for x in reminder_times if isinstance(x, str) and re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", x)][:6] if isinstance(reminder_times, list) else []
             entry["ocrConfidence"] = confidence(item)
-            entry["needsReview"] = entry["ocrConfidence"] is None or entry["ocrConfidence"] < 90 or not entry[fields[0]]
+            entry["needsReview"] = not entry[fields[0]] or (entry["ocrConfidence"] is not None and entry["ocrConfidence"] < 70)
             if entry[fields[0]]:
                 if key == "labTests" and entry["status"] not in ("NORMAL", "HIGH", "LOW", "CRITICAL"):
                     entry["status"] = "UNKNOWN"
@@ -536,7 +542,24 @@ def normalize_record(value):
         record["date"] = ""
     record["verbatimTranscription"] = str(value.get("verbatimTranscription", "")).strip() if isinstance(value.get("verbatimTranscription"), str) else ""
     record["ocrConfidence"] = confidence(value)
-    record["reviewRequired"] = bool(value.get("reviewRequired", False)) or bool(record["verbatimTranscription"])
+    review_items = value.get("reviewItems", [])
+    record["reviewItems"] = []
+    for item in review_items if isinstance(review_items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        alternatives = item.get("alternatives", [])
+        record["reviewItems"].append({
+            "field": str(item.get("field", ""))[:80],
+            "value": str(item.get("value", ""))[:300],
+            "sourceText": str(item.get("sourceText", ""))[:500],
+            "reason": str(item.get("reason", ""))[:200],
+            "alternatives": [str(x)[:200] for x in alternatives[:3] if isinstance(x, str)] if isinstance(alternatives, list) else [],
+        })
+    try:
+        datetime.strptime(record["injuryStartDate"], "%Y-%m-%d")
+    except ValueError:
+        record["injuryStartDate"] = ""
+    record["reviewRequired"] = bool(value.get("reviewRequired", False)) or bool(record["reviewItems"]) or any(m.get("needsReview") for m in record["medicines"]) or "[unclear]" in record["verbatimTranscription"].casefold()
     record["imageQuality"] = value.get("imageQuality") if value.get("imageQuality") in ("good", "fair", "poor") else "unknown"
     record["medicinesConfirmed"] = bool(value.get("medicinesConfirmed", False))
     record["ocrVersion"] = 2 if record["verbatimTranscription"] else 0
@@ -552,7 +575,7 @@ def analyze_uploaded_image(image_b64: str, mime_type: str, target_lang: str = "e
     prompt = f"""You are transcribing a possibly handwritten or low-quality medical document. This is OCR, not diagnosis or treatment advice.
 Perform these steps in order: first transcribe visible lines verbatim in their original language and line order; then extract structured fields only from that transcription and the image. Preserve spelling, punctuation, symbols, abbreviations and shorthand such as OD/BD/TDS/QID/SOS/HS/AC/PC, 1-0-1, Tab./Cap./Syp./Inj. and x 5 days. Keep the exact written notation; do not expand or normalize it unless the document itself does so.
 For each medicine include its complete line in rawText and sourceText. Extract name, strength, form, dosage, frequency, timing, duration and instructions only when visible. If a medicine name is uncertain, set name to "illegible", give up to three plausible alternatives, and set confidence below 0.5. If a field cannot be read, use an empty string and mark that part [unclear] in the transcription. Never guess or silently correct a name.
-Set each medicine confidence to your visual-reading confidence from 0.0 to 1.0. This is a model estimate, not a calibrated accuracy guarantee. Set imageQuality to good, fair, or poor based on the image's legibility. Keep reviewRequired true. Do not infer a diagnosis, treatment conclusion, or clinical advice from medicine names. The summary should describe only what is visible in the document, in {lang_name}.
+Set each medicine confidence to your visual-reading confidence from 0.0 to 1.0. This is a model estimate, not a calibrated accuracy guarantee. Set imageQuality to good, fair, or poor based on legibility. Set reminderTimes only for exact 24-hour clock times (HH:MM) explicitly printed beside that medicine; never convert shorthand such as 1-0-1, BD, morning, or after food into clock times. Set reviewRequired true only when a key value is unclear or uncertain (including medicine details, diagnosis, body area, injury start/cause, or important test values); otherwise false. For every unclear non-medicine field add a reviewItems entry with field, current reading, exact source text, short reason, and possible readings if visible. Use canonical field names: diagnoses, bodySite, injuryDescription, cause, injuryStartDate, documentedSeverity. Extract injuryStartDate and severity only when explicitly stated; never treat the report date as the injury start date. Do not infer a diagnosis, body area, cause, severity, treatment conclusion, or clinical advice from medicines. The summary should describe only what is visible in the document, in {lang_name}.
 
 Return ONLY strict JSON with this schema:
 {{
@@ -564,16 +587,22 @@ Return ONLY strict JSON with this schema:
   "date": "YYYY-MM-DD or empty string",
   "verbatimTranscription": "All readable text in original language and line order; [unclear] for unreadable parts",
   "imageQuality": "good|fair|poor",
-  "reviewRequired": true,
-  "diagnoses": [],
-  "medicines": [{{"rawText":"complete exact line","sourceText":"same exact line","name":"exact name or illegible","strength":"visible strength or empty","form":"visible form or empty","dosage":"visible dosage or empty","frequency":"visible notation or empty","timing":"visible timing or empty","duration":"visible duration or empty","instructions":"other visible instruction or empty","confidence":0.0,"alternatives":[]}}],
+  "reviewRequired": false,
+  "reviewItems": [],
+  "diagnoses": ["diagnosis or condition explicitly written in the document; otherwise empty"],
+  "bodySite": "body area explicitly named in the document, otherwise empty",
+  "injuryDescription": "injury explicitly described in the document, otherwise empty",
+  "cause": "cause or mechanism only if explicitly stated in the document, otherwise empty",
+  "injuryStartDate": "YYYY-MM-DD only if explicitly stated as when it started, otherwise empty",
+  "documentedSeverity": "low|medium|serious only if explicitly written, otherwise empty",
+  "medicines": [{{"rawText":"complete exact line","sourceText":"same exact line","name":"exact name or illegible","strength":"visible strength or empty","form":"visible form or empty","dosage":"visible dosage or empty","frequency":"visible notation or empty","timing":"visible timing or empty","duration":"visible duration or empty","instructions":"other visible instruction or empty","confidence":0.0,"reminderTimes":[],"alternatives":[]}}],
   "labTests": [{{"test":"visible parameter","value":"visible value","unit":"visible unit or empty","referenceRange":"visible range or empty","status":"NORMAL|HIGH|LOW|CRITICAL|UNKNOWN","interpretation":"explicitly printed interpretation or empty","sourceText":"exact original line"}}],
   "summary": "A concise description of the document in {lang_name}; no inferred diagnoses or advice",
   "abnormalExplanation": "Only what the document explicitly states, otherwise empty",
   "selfCareTips": [],
   "doctorQuestions": []
 }}
-Do not invent patient facts, diagnoses, values, medication details, confidence, or alternatives. Use empty arrays when no medicines or tests are visible. Respond with valid JSON only, no markdown or commentary."""
+Extract diagnoses and injury details only when explicitly written; never infer them from medicines, lab results, or context. Do not invent patient facts, diagnoses, values, medication details, confidence, or alternatives. Use empty strings/arrays when the document does not state them. Respond with valid JSON only, no markdown or commentary."""
 
     candidate_models = list(dict.fromkeys([DEFAULT_MODEL, "gemini-3.1-flash-lite"]))
     for model_name in candidate_models:
@@ -616,14 +645,14 @@ Do not invent patient facts, diagnoses, values, medication details, confidence, 
                 parsed = normalize_record(json.loads(clean_json))
                 record_type = parsed["recordType"].strip().casefold()
                 if "prescription" in record_type or record_type == "rx":
-                    parsed["summary"] = "Prescription transcribed. Verify every medicine and instruction against the original before relying on it."
-                    parsed["diagnoses"] = []
+                    documented_details = [parsed.get("injuryDescription", ""), "; ".join(parsed.get("diagnoses", [])), parsed.get("bodySite", ""), parsed.get("cause", "")]
+                    documented_details = [item for item in documented_details if item]
+                    parsed["summary"] = ("The document states: " + ". ".join(documented_details) + ".") if documented_details else "Prescription transcribed. The document does not clearly state a condition or injury."
                     parsed["abnormalExplanation"] = ""
                     parsed["selfCareTips"] = []
                     parsed["doctorQuestions"] = []
-                    parsed["reviewRequired"] = True
                     parsed["medicinesConfirmed"] = False
-                    if compare_image_b64:
+                    if compare_image_b64 and parsed.get("reviewRequired"):
                         # Independent pass on a grayscale/contrast-enhanced rendition. Agreement
                         # modestly raises the model estimate; disagreement always flags review.
                         try:
@@ -661,6 +690,7 @@ Do not invent patient facts, diagnoses, values, medication details, confidence, 
                         else:
                             for medicine in parsed["medicines"]:
                                 medicine["needsReview"] = True
+                parsed["reviewRequired"] = bool(parsed.get("reviewRequired")) or bool(parsed.get("reviewItems")) or any(m.get("needsReview") for m in parsed.get("medicines", [])) or "[unclear]" in parsed.get("verbatimTranscription", "").casefold()
                 parsed["id"] = "REC-OCR-" + uuid.uuid4().hex[:6].upper()
                 parsed["fhirBundle"] = build_fhir_bundle(parsed)
                 return parsed
@@ -678,7 +708,7 @@ MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_BODY_BYTES = 20 * 1024 * 1024
 PUBLIC_ROOT = Path(__file__).resolve().parent
 APP_PAGE = "Mr.Doc – Health Copilot (3).html"
-MAINTENANCE_MODE = os.environ.get("MAINTENANCE_MODE", "true").strip().lower() in ("1", "true", "yes", "on")
+MAINTENANCE_MODE = False
 UPLOAD_TYPES = {"image/png", "image/jpeg", "image/webp", "application/pdf"}
 
 
@@ -711,9 +741,10 @@ class Handler(SimpleHTTPRequestHandler):
             query = urlsplit(self.path).query
             self.path = f"/{APP_PAGE}" + (f"?{query}" if query else "")
             path = f"/{APP_PAGE}"
-        public_file = path in (f"/{APP_PAGE}", "/maintenance.html", "/styles.css", "/app.js")
-        public_asset = (path.startswith("/assets/") and Path(path).suffix.lower() in
-                        (".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"))
+        public_file = path in (f"/{APP_PAGE}", "/styles.css", "/app.js")
+        public_asset = (path == "/assets/voice-orb.html" or
+                        (path.startswith("/assets/") and Path(path).suffix.lower() in
+                         (".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico")))
         public_video = path in ("/frames/outputs/DOC_SPEAKS_2.0.mp4", "/frames/outputs/animation.mp4")
         resolved = Path(self.translate_path(self.path)).resolve()
         if not (public_file or public_asset or public_video) or PUBLIC_ROOT not in resolved.parents and resolved != PUBLIC_ROOT:
@@ -731,11 +762,6 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        if MAINTENANCE_MODE:
-            if urlsplit(self.path).path.startswith("/api/"):
-                return self.reply(503, {"error": "The website is temporarily undergoing maintenance. Please try again soon."})
-            self.path = "/maintenance.html"
-            return super().do_GET()
         if urlsplit(self.path).path == "/api/sample-records":
             return self.reply(200, SAMPLE_RECORDS)
         return super().do_GET()
@@ -757,8 +783,6 @@ class Handler(SimpleHTTPRequestHandler):
         return value
 
     def do_POST(self):
-        if MAINTENANCE_MODE:
-            return self.reply(503, {"success": False, "error": "The website is temporarily undergoing maintenance. Please try again soon."})
         route = urlsplit(self.path).path
         if route not in ("/api/chat", "/api/analyze-record", "/api/abha-sync"):
             return self.reply(404, {"error": "Unknown endpoint."})
@@ -834,9 +858,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(PUBLIC_ROOT)
-    host = os.environ.get("HOST", "0.0.0.0")
+    # Keep the health-data demo local by default. Set HOST=0.0.0.0 explicitly
+    # when running behind a deployment platform or when LAN access is intended.
+    host = os.environ.get("HOST", "127.0.0.1")
     tts_status = f"Gemini TTS ({GEMINI_TTS_VOICE})" if GEMINI_KEY else "Browser Speech"
-    print(f"Mr.Doc AI Health Copilot running at http://localhost:{PORT}")
+    print(f"Mr.Doc AI Health Copilot listening on {host}:{PORT}")
+    print(f"Open http://localhost:{PORT} in this computer's browser.")
     print(f"Features: Multimodal OCR | FHIR Export | Multi-Language | Voice ({tts_status})")
     http_server = ThreadingHTTPServer((host, PORT), Handler)
     try:

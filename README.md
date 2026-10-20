@@ -24,6 +24,7 @@
 ---
 
 ## 📑 Table of Contents
+
 - [Overview](#-overview)
 - [Visual Screen & Character Layout](#-visual-screen--character-layout)
 - [Key Features](#-key-features)
@@ -40,9 +41,10 @@
 
 ## 🌟 Overview
 
-**Mr.Doc** is an intelligent, privacy-first personal health copilot designed to empower patients and families. Medical records, discharge summaries, and lab reports are frequently packed with intimidating clinical terminology, complex reference ranges, and illegible handwriting. 
+**Mr.Doc** is an intelligent, privacy-first personal health copilot designed to empower patients and families. Medical records, discharge summaries, and lab reports are frequently packed with intimidating clinical terminology, complex reference ranges, and illegible handwriting.
 
 Mr.Doc bridges this gap:
+
 - **Upload Any Health Document:** Take a photo or upload a PDF of prescriptions, blood tests, or discharge summaries.
 - **Multimodal AI OCR:** Automatically reads and parses medications, dosages, lab values, and clinical findings.
 - **Plain-Language Explanations:** Explains what high/low test numbers mean and highlights danger signs without clinical jargon.
@@ -91,6 +93,7 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 ## ✨ Key Features
 
 ### 1. 🤖 Multimodal Document OCR & Intelligence
+
 - Supports **PNG, JPEG, WebP, and PDF** files up to **10 MB**.
 - Extracts critical structured metadata:
   - Patient & clinician details, date, hospital/clinic name.
@@ -99,18 +102,22 @@ Here is how the application screen is laid out when you launch Mr.Doc:
   - Practical self-care lifestyle tips and intelligent questions to ask your doctor.
 
 ### 2. 🎭 Interactive Animated Character Guide
+
 - Driven by a responsive, layered chibi doctor sprite system (`welcome-doctor.png`, `h_happy`, `h_gaze`, `h_blink`, `b_b_open`).
 - Synchronizes facial expressions (`happy`, `think`, `speak`, `look`, `supportive`) with conversation flow and audio delivery.
 
 ### 3. 🗣️ Multilingual Voice Interaction
+
 - Supports **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)** across all explanations and chat.
 - Natural voice synthesis via **Gemini TTS**, with automated fallback to the browser's native **Web Speech API** if speech generation is unavailable.
 
-### 4. 🏥 Standards-Compliant FHIR Export
-- Generates locally-formatted **HL7 FHIR JSON** resources (`DiagnosticReport`, `MedicationRequest`, `Observation`).
+### 4. 🏥 FHIR-Formatted Demo Export
+
+- Generates a local **FHIR-formatted JSON demonstration** with `Composition`, `Patient`, `Condition`, `Observation`, and `MedicationRequest` resources. It has not been validated against the ABDM profile and should not be treated as an official ABDM export.
 - Includes a local demonstration gateway for India's **ABDM / ABHA** (Ayushman Bharat Digital Mission) health IDs.
 
 ### 5. 🖨️ Print-Friendly & Timeline History
+
 - Clean, clinical-grade printable summaries formatted for doctors' appointments.
 - Local chronological timeline tracking all past consultations and test trends.
 
@@ -122,15 +129,15 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 flowchart TD
     A[Patient / User] -->|Uploads Image/PDF or Types Chat| B[Browser Frontend: app.js]
     B -->|Base64 Payload / Query| C[Python Server: server.py]
-    
-    C -->|Has GEMINI_API_KEY?| D[Google Gemini Vision API]
-    C -->|Has ANTHROPIC_API_KEY?| E[Anthropic Claude Vision API]
+
+    C -->|Document upload: GEMINI_API_KEY required| D[Google Gemini Vision API]
+    C -->|Chat: GEMINI_API_KEY or ANTHROPIC_API_KEY| E[Gemini or Anthropic chat API]
     C -->|Has GEMINI_API_KEY?| F[Gemini TTS API]
-    
+
     D -->|Structured JSON Response| C
-    E -->|Structured JSON Response| C
+    E -->|Chat reply| C
     F -->|WAV Audio| C
-    
+
     C -->|Unified Clean JSON + Audio| B
     B -->|Update Sprite & Expressions| G[Animated Chibi Doctor]
     B -->|Play Voice Audio| H[Audio Speaker]
@@ -139,7 +146,7 @@ flowchart TD
 ```
 
 1. **Input:** You upload a medical document or ask a health question in chat.
-2. **Backend Processing:** `server.py` validates the payload, verifies file integrity, and routes the document to the configured LLM vision model (Gemini or Claude).
+2. **Backend Processing:** `server.py` validates the payload and file integrity. Document uploads require a Gemini API key. Chat uses Gemini when configured, or Anthropic when Gemini is not configured.
 3. **Structured Extraction:** The AI extracts test parameters, flags out-of-range biomarkers, translates findings into the chosen regional language, and formulates clear patient instructions.
 4. **Speech & Animation:** The server generates voice audio via Gemini TTS (or triggers browser speech). The avatar dynamically animates its face and gestures while delivering the reply.
 5. **Dashboard & Storage:** Results are displayed in the dashboard and saved locally in `localStorage`.
@@ -149,7 +156,9 @@ flowchart TD
 ## 📦 Dependencies & Prerequisites
 
 ### 🚀 Zero Third-Party Python Packages Required!
+
 The entire backend is built using **pure Python standard library modules**:
+
 - `http.server` & `ThreadingHTTPServer` (HTTP web server)
 - `urllib.request` (Secure outbound AI API requests)
 - `json`, `base64`, `binascii`, `re`, `pathlib`, `uuid`, `datetime`
@@ -157,9 +166,10 @@ The entire backend is built using **pure Python standard library modules**:
 **You do NOT need to run `pip install` or install virtual environments for the core app.**
 
 ### Prerequisites
+
 - **Python 3.9** or higher installed on your system.
 - **Modern Web Browser:** Google Chrome, Microsoft Edge, Mozilla Firefox, or Apple Safari.
-- *(Optional)* API Keys for AI features:
+- _(Optional)_ API Keys for AI features:
   - **Google Gemini API Key** (Free tier available from [Google AI Studio](https://aistudio.google.com/))
   - **Anthropic API Key** (from [Anthropic Console](https://console.anthropic.com/))
 
@@ -168,25 +178,31 @@ The entire backend is built using **pure Python standard library modules**:
 ## ⚡ Quickstart: How to Run
 
 ### Step 1: Open Terminal / PowerShell
+
 Clone the repository or navigate to the project directory:
+
 ```bash
 cd CLAUDE_HACK_3.0
 ```
 
 ### Step 2: Set Up Environment File (`.env`)
+
 Copy the sample environment file:
 
 **On Windows (PowerShell):**
+
 ```powershell
 Copy-Item .env.example .env
 ```
 
 **On Windows (Command Prompt):**
+
 ```cmd
 copy .env.example .env
 ```
 
 **On macOS / Linux:**
+
 ```bash
 cp .env.example .env
 ```
@@ -196,6 +212,7 @@ Open `.env` in any text editor and paste your API key (e.g., your `GEMINI_API_KE
 > **Note:** Even without an API key, you can still launch the app and test all pre-loaded sample records (Blood Test, Prescription, Discharge Summary) with full multi-language translations and browser speech!
 
 ### Step 3: Run the Server
+
 Launch the local server using Python:
 
 ```bash
@@ -203,37 +220,35 @@ python server.py
 ```
 
 You should see output similar to:
+
 ```text
-Mr.Doc server running at http://127.0.0.1:8000
-Serving application: Mr.Doc – Health Copilot (3).html
-Press Ctrl+C to stop.
+Mr.Doc AI Health Copilot listening on 127.0.0.1:8000
+Open http://localhost:8000 in this computer's browser.
+Features: Multimodal OCR | FHIR Export | Multi-Language | Voice (Browser Speech)
 ```
 
 ### Step 4: Open in Your Browser
+
 Open your favorite browser and visit:
+
 ```text
 http://localhost:8000
 ```
-
-## Temporary Maintenance Mode
-
-The deployed site serves `maintenance.html` while `MAINTENANCE_MODE` is enabled. It is enabled by default for this maintenance deployment. To restore the app later, set `MAINTENANCE_MODE=false` in the Render service environment and redeploy.
-
----
 
 ## ⚙️ Configuration (`.env`)
 
 The `.env` file accepts the following parameters:
 
-| Variable | Default Value | Description |
-| :--- | :--- | :--- |
-| `GEMINI_API_KEY` | *(None)* | Google Gemini API key used for multimodal document OCR and chat. |
-| `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Model identifier for Gemini (`gemini-3.1-flash-lite`, `gemini-2.5-flash`, etc.). |
-| `GEMINI_TTS_MODEL` | `gemini-3.8-flash-tts` | Gemini TTS model for spoken replies. |
-| `GEMINI_TTS_VOICE` | `Puck` | Gemini TTS voice name for spoken replies. |
-| `ANTHROPIC_API_KEY` | *(None)* | Anthropic Claude API key (used if Gemini key is omitted). |
-| `CARELY_MODEL` | `claude-sonnet-5-5` | Model identifier for Claude (`claude-sonnet-5-5`, `claude-3-5-sonnet`, etc.). |
-| `PORT` | `8000` | Local port number for the HTTP server. |
+| Variable            | Default Value           | Description                                                                      |
+| :------------------ | :---------------------- | :------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`    | _(None)_                | Google Gemini API key used for multimodal document OCR and chat.                 |
+| `GEMINI_MODEL`      | `gemini-3.1-flash-lite` | Model identifier for Gemini (`gemini-3.1-flash-lite`, `gemini-2.5-flash`, etc.). |
+| `GEMINI_TTS_MODEL`  | `gemini-3.8-flash-tts`  | Gemini TTS model for spoken replies.                                             |
+| `GEMINI_TTS_VOICE`  | `Puck`                  | Gemini TTS voice name for spoken replies.                                        |
+| `ANTHROPIC_API_KEY` | _(None)_                | Anthropic Claude API key for chat when Gemini is not configured; document OCR still requires Gemini. |
+| `CARELY_MODEL`      | `claude-sonnet-5-5`     | Model identifier for Claude (`claude-sonnet-5-5`, `claude-3-5-sonnet`, etc.).    |
+| `PORT`              | `8000`                  | Local port number for the HTTP server.                                           |
+| `HOST`              | `127.0.0.1`             | Network interface to listen on. Use `0.0.0.0` only for a trusted deployment or when LAN access is intended. |
 
 ---
 
@@ -243,29 +258,33 @@ The `.env` file accepts the following parameters:
 ├── assets/                          # Character sprites, expressions, and artwork
 │   ├── welcome-doctor.png           # Chibi doctor guide portrait
 │   ├── h_happy.png, h_gaze.png...   # Animated head expression frames
-│   └── b_b_down.png, b_b_open...    # Animated body pose frames
+│   ├── b_b_down.png, b_b_open...    # Animated body pose frames
+│   ├── *_embedded.png               # Preserved expression-frame images
+│   └── voice-orb.html               # Animated voice-listening control
 ├── frames/                          # Video animation sequences & outputs
 │   └── outputs/animation.mp4        # Rendered doctor speech video demo
 ├── .env.example                     # Sample environment variable template
 ├── .gitignore                       # Git ignore rules (.env, caches, etc.)
 ├── app.js                           # Core frontend application logic & character controller
-├── Mr.Doc – Health Copilot (3).html # Main web interface & dashboard layout
+├── Mr.Doc – Health Copilot (3).html # Main web interface; loads the shared CSS and JS
 ├── README.md                        # Documentation & setup guide
 ├── server.py                        # Zero-dependency Python backend & AI router
 └── styles.css                       # Responsive healthcare styling & animations
 ```
 
+The HTML page is the shell. The shared interface behavior lives in `app.js`, and its styles live in `styles.css`; the voice orb animation lives in `assets/voice-orb.html`.
+
 ---
 
 ## 🔌 API Endpoints Reference
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` or `/index.html` | Serves the main web dashboard. |
-| `GET` | `/api/sample-records` | Returns pre-configured clinical sample records with full multilingual translations. |
-| `POST`| `/api/chat` | Accepts `{ prompt, language, voice }` and streams back AI doctor guidance + audio. |
-| `POST`| `/api/analyze-record` | Accepts base64 encoded document image/PDF or `sampleId`, returns structured medical JSON. |
-| `POST`| `/api/abha-sync` | Local demonstration gateway for ABHA ID verification & FHIR compliance testing. |
+| Method | Endpoint              | Description                                                                               |
+| :----- | :-------------------- | :---------------------------------------------------------------------------------------- |
+| `GET`  | `/` or `/index.html`  | Serves the main web dashboard.                                                            |
+| `GET`  | `/api/sample-records` | Returns pre-configured clinical sample records with full multilingual translations.       |
+| `POST` | `/api/chat`           | Accepts `{ prompt, language, voice }` and streams back AI doctor guidance + audio.        |
+| `POST` | `/api/analyze-record` | Accepts base64 encoded document image/PDF or `sampleId`, returns structured medical JSON. |
+| `POST` | `/api/abha-sync`      | Local demonstration response with sample records; it does not verify an ABHA ID or connect to ABDM. |
 
 ---
 
