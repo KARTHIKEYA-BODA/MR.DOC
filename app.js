@@ -17,6 +17,7 @@
           window.location.protocol === "file:"
             ? "http://localhost:8000/api/analyze-record"
             : "/api/analyze-record",
+        abhaCardEndpoint: window.location.protocol === "file:" ? "http://localhost:8000/api/analyze-abha" : "/api/analyze-abha",
       };
 
       async function requestJson(url, payload, signal) {
@@ -152,6 +153,8 @@
           "facility",
           "doctorName",
           "patientName",
+          "patientAge",
+          "patientGender",
           "date",
           "summary",
           "abnormalExplanation",
@@ -165,6 +168,7 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(record.injuryStartDate)) record.injuryStartDate = "";
         if (!["low", "medium", "serious"].includes(record.documentedSeverity)) record.documentedSeverity = "";
         record.recordType ||= "Medical record";
+        record.importedFromFile = value.importedFromFile === true;
         for (const key of ["diagnoses", "selfCareTips", "doctorQuestions"])
           record[key] = strings(value[key]);
         for (const [key, fields] of [
@@ -389,6 +393,8 @@
       if (!["en", "hi", "te", "ta"].includes(S.lang)) S.lang = "en";
       delete S.abha;
       S.voice = S.voice !== false;
+      S.readerMode = S.readerMode === true;
+      document.body.classList.toggle("reader-mode", S.readerMode);
       const save = () => {
         try {
           localStorage.setItem("carely", JSON.stringify(S));
@@ -453,6 +459,7 @@
         const e = EXP[k];
         if ($("#sb")) $("#sb").dataset.mode = e.m;
         hd.dataset.mode = e.m;
+        window.MrDocStage?.setExpression(k);
         if (e.f) {
           showH(null);
           showB(e.f);
@@ -568,6 +575,7 @@
         renderChat();
         renderDrawerChats();
         $("#inp").focus();
+        window.MrDocStage?.greet();
         return c;
       }
 
@@ -578,6 +586,7 @@
         for (const [k, l] of [
           ["name", "Name"],
           ["age", "Age"],
+          ["gender", "Sex recorded in profile"],
           ["blood", "Blood group"],
           ["allergies", "Allergies"],
           ["conditions", "Conditions"],
@@ -590,7 +599,7 @@
           const recSummaries = personalRecords()
             .slice(0, 3)
             .map(
-              (r) => `${r.recordType} (${r.date}): ${r.diagnoses.join(", ")}`,
+              (r) => `${r.recordType} (${r.date}): ${r.diagnoses.join(", ")}${r.patientAge ? "; age printed in record: " + r.patientAge : ""}${r.patientGender ? "; sex printed in record: " + r.patientGender : ""}`,
             );
           o.push("Analyzed Records: " + recSummaries.join(" | "));
         }
@@ -897,6 +906,7 @@
           <div class="doctor-visit-summary-toolbar"><div><h2 id="doctor-visit-summary-title">Doctor visit summary</h2><p>Prepared from your uploaded records. Check it before sharing.</p></div><button class="btn-sm btn-pri" type="button" id="print-visit-summary" ${visitRecords.length ? "" : "disabled"}>Print summary</button></div>
           <div class="doctor-visit-summary-sheet"><header><h2>Health record summary</h2><p>Generated ${new Date().toLocaleDateString()}</p></header>
             ${S.profile?.name ? `<p><b>Profile name:</b> ${esc(S.profile.name)}</p>` : ""}
+            ${S.profile?.abhaNumber ? `<p><b>ABHA number (saved locally, unverified):</b> ${esc(S.profile.abhaNumber)}</p>` : ""}
             <h3>Recent uploaded records</h3>${visitRecordRows ? `<ul>${visitRecordRows}</ul>` : `<p>No uploaded records yet.</p>`}
             <h3>Medicines read clearly or reviewed from prescriptions</h3>${visitMedicines ? `<ul>${visitMedicines}</ul>` : `<p>No confirmed medicine details are available in the uploaded records.</p>`}
             <h3>Recorded lab results</h3>${visitLabs ? `<ul>${visitLabs}</ul>` : `<p>No lab results are available in the uploaded records.</p>`}
@@ -1001,7 +1011,7 @@
         const needsOcrUpdate = isOcrRecord && selected.ocrVersion < 2;
         const previewUrl = selected ? recordPreviews.get(selected.id) : "";
         const needsDocumentReview =
-          isOcrRecord &&
+          (isOcrRecord || selected?.importedFromFile) &&
           !!selected?.reviewRequired;
 
         // Simplified abnormal watch items per user instruction
@@ -1034,7 +1044,7 @@
     <!-- Upload Dropzone -->
     <div class="dropzone" id="records-dropzone">
       <span class="dropzone-copy"><b>Add a medical record</b><span class="note">PNG, JPEG, WebP or PDF · up to 10 MB</span></span>
-      <button class="btn-sm btn-pri" id="browse-record">Choose file</button>
+      <div class="upload-file-actions"><button class="btn-sm btn-pri" id="browse-record">Choose file</button><button class="btn-sm btn-sec" id="take-record" type="button">Take photo</button></div>
       <span id="upload-status" role="status"></span>
     </div>
 
@@ -1043,20 +1053,21 @@
       curR
         ? `
       <div class="rec-card">
+        ${selected.importedFromFile ? '<p class="note">Imported health file · review the original source before relying on it.</p>' : ""}
         ${isDemo(selected) ? '<p class="demo-note">Demonstration record · sample data, excluded from your personal profile.</p>' : ""}
         ${isUnavailable(selected) ? '<p class="demo-note">Analysis unavailable · please upload this record again.</p>' : ""}
         ${needsOcrUpdate ? '<div class="ocr-review-note"><b>This upload used an older reader.</b><br>Its extracted medicine details may be wrong. Upload the original again to create a careful transcription.</div>' : ""}
         ${
-          isOcrRecord && !needsOcrUpdate
+          (isOcrRecord && !needsOcrUpdate) || selected.importedFromFile
             ? `
           <details class="ocr-advanced-disclosure">
-            <summary>View extracted text</summary>
+            <summary>${selected.importedFromFile ? "View source information" : "View extracted text"}</summary>
             <section class="ocr-transcription" aria-label="Extracted document text">
               <div class="ocr-transcription-heading"><b>Text extracted from your document</b><span>${detectedSourceLanguages.length ? `Detected source languages: ${esc(detectedSourceLanguages.join(", "))}` : "Source language not confidently identified · compare with the original"}</span></div>
               <div class="ocr-review-layout">
                 ${previewUrl ? `<figure class="ocr-original"><figcaption>Uploaded document</figcaption><img src="${esc(previewUrl)}" alt="Uploaded prescription or report"></figure>` : ""}
                 <div class="ocr-transcription-copy">
-                  <pre>${esc(curR.verbatimTranscription || "No readable text was returned. Please try a clearer, well-lit image.")}</pre>
+                  <pre>${esc(curR.verbatimTranscription || (selected.importedFromFile ? "Imported as structured clinical data. A source document image was not included in this file." : "No readable text was returned. Please try a clearer, well-lit image."))}</pre>
                   <p>Handwriting and image quality can affect OCR. Confirm important details with the original document.</p>
                 </div>
               </div>
@@ -1260,6 +1271,7 @@
         // Wire up dropzone
         const dz = el.querySelector("#records-dropzone");
         $("#browse-record").onclick = () => $("#file-inp").click();
+        $("#take-record").onclick = () => $("#file-take").click();
         for (const event of ["dragenter", "dragover"])
           dz.addEventListener(event, (e) => {
             e.preventDefault();
@@ -1280,6 +1292,7 @@
           renderRecordResults();
         };
         el.querySelector("#delete-all-records")?.addEventListener("click", () => {
+          if (uploading) return notify("Please wait until the current file finishes before clearing saved data.");
           if (!window.confirm("Clear all Mr.Doc data saved in this browser? This permanently deletes your medical records, chat history, reminders, health progress, and profile details. This cannot be undone.")) return;
           try {
             localStorage.removeItem("carely");
@@ -1288,7 +1301,11 @@
             notify("Browser storage could not be cleared. Please try again.", true);
             return;
           }
+          recordPreviews.forEach(url => URL.revokeObjectURL(url));
           recordPreviews.clear();
+          lastUploadFile = null;
+          cancelPendingChat();
+          stopSpeech();
           window.location.reload();
         });
         renderRecordResults();
@@ -1687,7 +1704,8 @@
 
         const F = [
           ["name", "Full Name"],
-          ["age", "Age"],
+          ["age", "Age (years, optional)"],
+          ["gender", "Sex on your reports (optional)"],
           ["blood", "Blood Group"],
           ["allergies", "Known Allergies"],
           ["conditions", "Chronic Conditions"],
@@ -1751,7 +1769,7 @@
             bits.push("Blood group " + plain(S.profile.blood).trim());
           return bits.length
             ? bits.join(" · ")
-            : "Add your age and blood group below";
+            : "Your uploads bring your health details together";
         };
         const uploadCta = `<button type="button" class="mh-link" data-go="records">Upload a report →</button>`;
 
@@ -1764,6 +1782,7 @@
       <div class="mh-hero-info">
         <h2 id="mh-name">${esc(plain(S.profile.name).trim()) || "Your name"}</h2>
         <p id="mh-sub">${esc(subText())}</p>
+        <span class="profile-local-status">${S.profile.abhaNumber || S.profile.abhaAddress ? "ABHA details saved · unverified" : "ABHA details optional"}</span>
         <div class="mh-progress">
           <div class="mh-bar"><i id="mh-fill" style="width:${pct()}%"></i></div>
           <span id="mh-pct">${pct()}% profile complete</span>
@@ -1776,21 +1795,31 @@
       </div>
     </section>
 
+    <nav class="profile-quick-actions" aria-label="Health profile actions">
+      <button type="button" class="btn-sm btn-pri" data-go="chat">Ask Mr.Doc</button>
+      <button type="button" class="btn-sm btn-sec" data-go="records">Upload or view reports</button>
+      <button type="button" class="btn-sm btn-sec" data-go="timeline">View timeline</button>
+      <button class="btn-sm btn-sec" id="reader-mode" type="button" aria-pressed="${S.readerMode}">${S.readerMode ? "Use standard text" : "Use larger text"}</button>
+    </nav>
+
     <div class="mh-grid">
+      <div class="mh-col">
       <section class="mh-card">
         <h3 class="mh-h">Personal details <small>Saved on this browser</small></h3>
+        <details class="profile-options"><summary>Update personal details (optional)</summary>
+        <p class="note">Uploads provide your record details automatically. Some lab ranges depend on age and sex; Mr.Doc keeps the range printed on the report.</p>
         <div class="mh-form">
           ${F.map(
             ([k, l]) => `
             <div>
               <label for="prof-${k}">${l}</label>
               ${
-                ["notes", "conditions", "meds", "allergies"].includes(k)
+                k === "gender" ? `<select id="prof-gender"><option value="">Not provided</option>${[["female","Female"],["male","Male"],["other","Other"],["unknown","Prefer not to say"]].map(([value,label]) => `<option value="${value}" ${S.profile.gender === value ? "selected" : ""}>${label}</option>`).join("")}</select>` : ["notes", "conditions", "meds", "allergies"].includes(k)
                   ? `
                 <textarea id="prof-${k}" rows="2">${esc(S.profile[k] || "")}</textarea>
               `
                   : `
-                <input id="prof-${k}" value="${esc(S.profile[k] || "")}">
+                <input id="prof-${k}" ${k === "age" ? 'type="number" min="0" max="130" step="1"' : 'type="text"'} value="${esc(S.profile[k] || "")}">
               `
               }
             </div>
@@ -1798,7 +1827,10 @@
           ).join("")}
         </div>
         <button type="button" class="form-btn" id="btn-save-prof">Save Profile</button>
+        </details>
       </section>
+      ${profileToolsHtml()}
+      </div>
 
       <div class="mh-col">
         <section class="mh-card">
@@ -1811,7 +1843,7 @@
         </section>
 
         <section class="mh-card">
-          <h3 class="mh-h">Needs attention <small>${flags.length ? flags.length + " out-of-range" : "all clear"}</small></h3>
+          <h3 class="mh-h">Needs attention <small>${flags.length ? flags.length + " out-of-range" : "none recorded"}</small></h3>
           ${
             flags.length
               ? `<div class="mh-flags">${flags
@@ -1869,6 +1901,7 @@
     </div>
   `;
 
+        wireProfileTools(el);
         const updateHero = () => {
           const q = (id) => el.querySelector(id);
           q("#mh-avatar").textContent = initials(S.profile.name) || "👤";
@@ -1883,6 +1916,7 @@
           const inp = el.querySelector(`#prof-${k}`);
           if (inp) {
             inp.oninput = () => {
+              if (k === "age" && inp.value && (!/^\d{1,3}$/.test(inp.value) || Number(inp.value) > 130)) return;
               S.profile[k] = inp.value;
               save();
               updateHero();
@@ -1917,6 +1951,103 @@
       }
 
       // 6. FULL PAGE: HEALTH GUIDANCE
+      function profileToolsHtml() {
+        return `<section class="mh-card"><h3 class="mh-h">ABHA health card <small>Optional</small></h3>
+          <p class="note">Save details from your own card in this browser. Scanning reads the card; it does not sign into or verify your national health account.</p>
+          <details class="profile-options"><summary>Add or scan card details</summary>
+            <button class="btn-sm btn-sec" type="button" id="scan-abha">Scan card photo</button>
+            <input type="file" id="abha-photo" accept="image/png,image/jpeg,image/webp" capture="environment" hidden>
+            <p id="abha-scan-status" class="note" role="status"></p>
+            <div class="mh-form"><div><label for="abha-number">14-digit ABHA number</label><input id="abha-number" type="text" inputmode="numeric" maxlength="17" placeholder="XX-XXXX-XXXX-XXXX" value="${esc(S.profile.abhaNumber || "")}"></div>
+            <div><label for="abha-address">ABHA address</label><input id="abha-address" type="text" maxlength="105" placeholder="name@abdm" value="${esc(S.profile.abhaAddress || "")}"></div></div>
+            <button class="btn-sm btn-pri" type="button" id="save-abha">Save card details</button>
+          </details></section>
+          <section class="mh-card"><h3 class="mh-h">Backup or transfer your records</h3><p class="note">Download your profile and medical records, or import a health file from your device. Files stay in this browser during import.</p>
+            <div class="profile-tool-actions"><button class="btn-sm btn-pri" id="download-health" type="button">Download health backup</button><button class="btn-sm btn-sec" id="import-health" type="button">Import health file</button></div>
+            <input type="file" id="health-file" accept="application/json,.json" hidden>
+            <p class="note">JSON · up to 5 MB. Bring records from another device without entering them again.</p>
+            <details class="profile-options"><summary>Supported health files</summary><p class="note">Mr.Doc backups and supported FHIR R4 clinical bundles. External files must describe one patient. Lab values, medicine instructions, and conditions can be imported; unsupported entries are shown in the preview. Files are not validated for ABDM exchange.</p></details>
+            <p id="health-file-status" class="note" role="status"></p></section>`;
+      }
+
+      function wireProfileTools(el) {
+        el.querySelector("#reader-mode").onclick = () => {
+          S.readerMode = !S.readerMode;
+          if (!save()) { S.readerMode = !S.readerMode; return; }
+          document.body.classList.toggle("reader-mode", S.readerMode);
+          const button = el.querySelector("#reader-mode");
+          button.setAttribute("aria-pressed", String(S.readerMode));
+          button.textContent = S.readerMode ? "Use standard text" : "Use larger text";
+        };
+        el.querySelector("#abha-number").oninput = (event) => { event.target.value = MrDocHealth.formatAbha(event.target.value); };
+        el.querySelector("#save-abha").onclick = () => {
+          try {
+            const fields = MrDocHealth.validateAbha(el.querySelector("#abha-number").value, el.querySelector("#abha-address").value.trim());
+            const previous = { ...S.profile }; Object.assign(S.profile, fields);
+            if (!save()) { S.profile = previous; return; }
+            renderProfilePage(); notify("Card details saved in this browser. No ABHA account was connected.");
+          } catch(error) { notify(error.message, true); }
+        };
+        el.querySelector("#scan-abha").onclick = () => el.querySelector("#abha-photo").click();
+        el.querySelector("#abha-photo").onchange = async (event) => {
+          const file = event.target.files?.[0]; event.target.value = "";
+          if(!file) return;
+          if(uploading) return notify("Please wait for the current file to finish.");
+          if(!["image/png","image/jpeg","image/webp"].includes(file.type) || !file.size || file.size > 10 * 1024 * 1024) return notify("Choose a PNG, JPEG, or WebP card photo up to 10 MB.", true);
+          const button = el.querySelector("#scan-abha"), status = el.querySelector("#abha-scan-status");
+          uploading = true; button.disabled = true; updateUploadUI(); status.textContent = "Reading your card photo…";
+          try {
+            const data = await requestJson(CONFIG.abhaCardEndpoint, { image: await readFileBase64(file), mimeType: file.type });
+            el.querySelector("#abha-number").value = MrDocHealth.formatAbha(data.abha.abhaNumber || "");
+            el.querySelector("#abha-address").value = data.abha.abhaAddress || "";
+            status.textContent = "Check the extracted details against your card, then save. Unclear fields were left blank.";
+          } catch(error) { status.textContent = error.message; }
+          finally { uploading = false; button.disabled = false; updateUploadUI(); }
+        };
+        el.querySelector("#download-health").onclick = () => {
+          try {
+            const bundle = MrDocHealth.exportHealth(S.profile, personalRecords(), S.healthItems);
+            const blob = new Blob([JSON.stringify(bundle, null, 2)], {type:"application/json"});
+            if(blob.size > 5 * 1024 * 1024 || bundle.entry.length > 2000) throw new Error("This backup exceeds the current health-file import limit (5 MB or 2,000 entries). Your saved records have not been changed.");
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a"); link.href = url; link.download = "MrDoc-health-backup-" + new Date().toISOString().slice(0,10) + ".json";
+            document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+            el.querySelector("#health-file-status").textContent = "Backup prepared. Keep this personal health file somewhere you trust.";
+          } catch(error) { el.querySelector("#health-file-status").textContent = error.message; }
+        };
+        el.querySelector("#import-health").onclick = () => el.querySelector("#health-file").click();
+        el.querySelector("#health-file").onchange = async (event) => {
+          const file = event.target.files?.[0]; event.target.value = "";
+          if(!file) return;
+          if(uploading) return notify("Please wait for the current file to finish.");
+          if(!file.size || file.size > 5 * 1024 * 1024) return notify("Choose a health JSON file up to 5 MB.", true);
+          const status = el.querySelector("#health-file-status");
+          const button = el.querySelector("#import-health"); button.disabled = true;
+          try {
+            const imported = MrDocHealth.parseHealthFile(JSON.parse(await file.text()));
+            const records = imported.records.map(record => normalizeRecord({...record, importedFromFile: true}));
+            if(records.some(r => !r)) throw new Error("A record could not be read. Nothing was imported.");
+            const names = imported.patientNames.slice(0,4).join(", ") + (imported.patientNames.length > 4 ? " and more" : "") || imported.profile.name || "Name not provided";
+            const newRecords = records.filter(r => !S.records.some(saved => saved.id === r.id));
+            if(!window.confirm(`Import ${newRecords.length} new record(s)?\nPatient: ${names}\n${imported.unsupported ? imported.unsupported + " unsupported entries will be skipped.\n" : ""}Existing records will be kept. Profile details fill empty fields only. Check that these records belong in this browser.`)) return;
+            const previous = JSON.parse(JSON.stringify(S));
+            S.records.push(...newRecords);
+            const matchingProfile = !S.profile.name || MrDocHealth.canUseProfile(S.profile, imported.profile.name);
+            if(matchingProfile) Object.entries(MrDocHealth.cleanProfile(imported.profile)).forEach(([key,value]) => { if(!S.profile[key]) S.profile[key] = value; });
+            const ids = new Set(S.records.map(r => r.id));
+            imported.healthItems.filter(item => item && ids.has(item.recordId) && typeof item.id === "string").forEach(item => {
+              if(!S.healthItems.some(saved => saved.id === item.id)) S.healthItems.push({id:item.id,recordId:item.recordId,healed:item.healed === true});
+            });
+            newRecords.forEach(syncAutoReminders);
+            if(newRecords.length) S.curRecord = newRecords[0].id;
+            if(!save()) { S = previous; throw new Error("The import could not be saved. Free some browser storage and try again."); }
+            renderProfilePage();
+            notify(`${newRecords.length} record(s) imported${records.length - newRecords.length ? "; existing copies were skipped" : ""}. Open Medical Records or Timeline to view them.`);
+          } catch(error) { status.textContent = error instanceof SyntaxError ? "This file is not valid JSON. Nothing was imported." : error.message; }
+          finally { button.disabled = false; }
+        };
+      }
+
       function renderGuidePage() {
         const el = $("#page-guide-content");
         if (!el) return;
@@ -1974,7 +2105,7 @@
 
       let uploading = false;
       function updateUploadUI() {
-        for (const selector of ["#rec-up", "#browse-record"]) {
+        for (const selector of ["#rec-up", "#browse-record", "#rec-take", "#take-record", "#upload-retry-btn", "#scan-abha", "#import-health"]) {
           const button = $(selector);
           if (button) button.disabled = uploading;
         }
@@ -2003,79 +2134,59 @@
           if (!speechActive) setExp("happy");
         }
       }
+      let lastUploadFile = null;
+      function readFileBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1]);
+          reader.onerror = reader.onabort = () => reject(new Error("This file could not be read. Please choose it again."));
+          reader.readAsDataURL(file);
+        });
+      }
       async function handleFileUpload(file) {
         if (!file) return;
-        if (uploading)
-          return notify("A report is already being read. Please wait.");
-        const mime =
-          file.type ||
-          {
-            pdf: "application/pdf",
-            png: "image/png",
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            webp: "image/webp",
-          }[file.name.split(".").pop().toLowerCase()];
-        if (
-          ![
-            "application/pdf",
-            "image/png",
-            "image/jpeg",
-            "image/webp",
-          ].includes(mime)
-        )
-          return notify("Choose a PNG, JPEG, WebP image or PDF.", true);
-        if (!file.size || file.size > 10 * 1024 * 1024)
-          return notify("Choose a non-empty file smaller than 10 MB.", true);
-        uploading = true;
-        updateUploadUI();
-        const analysisOverlay = $("#analysis-overlay");
-        if (analysisOverlay) analysisOverlay.hidden = false;
-        setExp("think");
-        const analysisText = $("#analysis-status-text");
-        if (analysisText) analysisText.textContent = "Checking the image and reading visible text…";
+        if (uploading) return notify("A report is already being read. Please wait.");
+        // A new selection replaces the previous retry, including an invalid selection.
+        lastUploadFile = null;
+        const retry = $("#upload-retry-banner"); retry.hidden = true;
+        const mime = file.type || {pdf:"application/pdf",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp"}[file.name.split(".").pop().toLowerCase()];
+        if (!["application/pdf","image/png","image/jpeg","image/webp"].includes(mime)) return notify("Choose a PNG, JPEG, WebP image or PDF.", true);
+        if (!file.size || file.size > 10 * 1024 * 1024) return notify("Choose a non-empty file up to 10 MB.", true);
+        uploading = true; updateUploadUI(); stopSpeech();
+        const overlay = $("#analysis-overlay"), bar = $("#upload-progress-fill"), progress = bar.parentElement;
+        $("#analysis-file-name").textContent = file.name;
+        progress.removeAttribute("aria-valuenow"); progress.setAttribute("aria-valuetext", "Reading your report");
+        bar.classList.remove("complete"); overlay.hidden = false;
+        $("#analysis-status-text").textContent = "Reading your report and writing a simple summary…";
+        setExp("think"); let canRetry = false;
         try {
-          const encoded = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result).split(",")[1]);
-            reader.onerror = reader.onabort = () =>
-              reject(
-                new Error(
-                  "This file could not be read. Please choose it again.",
-                ),
-              );
-            reader.readAsDataURL(file);
-          });
-          let processedImage = "",
-            qualityCheck = null;
+          const encoded = await readFileBase64(file);
+          let processedImage = "";
           if (mime.startsWith("image/")) {
             const prepared = await preparePrescriptionImage(file);
             processedImage = prepared.image;
-            qualityCheck = prepared.quality;
-            if (qualityCheck.blur < 14 || qualityCheck.brightness < 24) {
-              throw new Error(
-                "This photo looks too blurry or dark to read safely. Retake it in bright, even light and keep the writing in focus.",
-              );
-            }
+            if (prepared.quality.blur < 14 || prepared.quality.brightness < 24) throw new Error("This photo looks too blurry or dark. Retake it in bright, even light and keep all the writing in focus.");
           }
+          lastUploadFile = file; canRetry = true;
           const data = await requestJson(CONFIG.ocrEndpoint, {
-            image: encoded,
-            processedImage,
-            mimeType: mime,
-            language: S.lang,
-            voice,
+            image: encoded, processedImage, mimeType: mime, language: S.lang, voice,
+            age: S.profile.age || "", gender: S.profile.gender || "", profileName: S.profile.name || "",
           });
-          const previewUrl = mime.startsWith("image/")
-            ? URL.createObjectURL(file)
-            : "";
+          progress.setAttribute("aria-valuenow", "100"); progress.setAttribute("aria-valuetext", "Report ready");
+          bar.classList.add("complete"); await sleep(180);
+          const previewUrl = mime.startsWith("image/") ? URL.createObjectURL(file) : "";
           handleAnalyzedRecord(data.record, data.audio, previewUrl);
-          notify("Report added to your records.");
+          lastUploadFile = null; notify("Report added. The full result is available when you want to open it.");
         } catch (error) {
-          notify(error.message, true);
+          if (!canRetry) lastUploadFile = null;
+          $("#upload-retry-file").textContent = file.name;
+          $("#upload-retry-text").textContent = error.message;
+          const retryButton = $("#upload-retry-btn");
+          retryButton.textContent = canRetry ? "Try again" : "Choose another file";
+          retryButton.dataset.chooseFile = canRetry ? "" : "1";
+          retry.hidden = false;
         } finally {
-          uploading = false;
-          if (analysisOverlay) analysisOverlay.hidden = true;
-          updateUploadUI();
+          uploading = false; overlay.hidden = true; updateUploadUI();
           if (!speechActive) setExp("happy");
         }
       }
@@ -2083,12 +2194,14 @@
         const source = await new Promise((resolve, reject) => {
           const image = new Image();
           image.onload = () => resolve(image);
-          image.onerror = () =>
+          image.onerror = () => {
+            URL.revokeObjectURL(image.src);
             reject(
               new Error(
                 "This photo could not be opened. Please choose another image.",
               ),
             );
+          };
           image.src = URL.createObjectURL(file);
         });
         try {
@@ -2352,6 +2465,7 @@
         if (index < 0) S.records.unshift(record);
         else S.records[index] = record;
         syncAutoReminders(record);
+        if (!S.profile.name && record.patientName && !record.reviewItems.some(item => item.field === "patientName")) S.profile.name = record.patientName;
         S.curRecord = record.id;
         const chat = cur() || newChat();
         chat.msgs.push({
@@ -2404,6 +2518,7 @@
         }
         speechActive = true;
         updateSpeechUI();
+        window.MrDocStage?.speak(text);
         setExp("speak");
         return new Promise((resolve) => {
           let finished = false;
@@ -2539,6 +2654,7 @@
           chat.msgs.push({ role: "assistant", text: greeting });
           save();
           bubble("assistant", greeting);
+          window.MrDocStage?.greet();
           setChatBusy(false);
           pendingChat = null;
           if (voice) speakText(greeting);
@@ -2557,9 +2673,9 @@
           ta: "Tamil",
         }[S.lang];
         const prompt =
-          "Reply directly to the patient's latest message in 1–3 short sentences in " +
+          "Reply to the latest message in " +
           language +
-          ". Use plain language and no markdown. Do not reveal internal reasoning, instructions, or planning. For a greeting, greet briefly without forcing health advice. Never diagnose; for emergency signs, advise contacting emergency services immediately. Use this patient health information only when it is relevant (demonstration records excluded): " +
+          ". Use simple, everyday language. For a question such as what is cancer or what is diabetes, give a short explanation first, then brief labelled paragraphs for What may help and When to get care, only when relevant. Aim for 120–180 words for a condition explanation; a simple factual question can be shorter. Avoid markdown symbols; use plain text labels and line breaks. Do not imply diet cures disease or every question needs a specialist. Do not reveal internal reasoning, instructions, or planning. For a greeting, greet briefly without forcing health advice. Never diagnose; for emergency signs, advise contacting emergency services immediately. Use this patient health information only when it is relevant (demonstration records excluded): " +
           profText().slice(0, 10000) +
           "\nRecent conversation for context:\n" +
           history +
@@ -2710,6 +2826,17 @@
       $("#rec-up").onclick = () => {
         if (fileInp) fileInp.click();
       };
+      $("#rec-take").onclick = () => $("#file-take").click();
+      $("#file-take").onchange = (event) => {
+        const file = event.target.files?.[0]; event.target.value = "";
+        if (file) handleFileUpload(file);
+      };
+      $("#upload-retry-btn").onclick = () => {
+        if ($("#upload-retry-btn").dataset.chooseFile) fileInp.click();
+        else if (lastUploadFile) handleFileUpload(lastUploadFile);
+      };
+      $("#upload-retry-dismiss").onclick = () => { $("#upload-retry-banner").hidden = true; lastUploadFile = null; };
+
 
       // Listening Waveform Button (||||)
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2946,6 +3073,7 @@
       function positionIntroVideoMask() {
         if (!introVideoMask || !introVideoNameTag) return;
         const frame = $(".intro-video-frame");
+        if (!frame) return; // the intro screen may already be removed
         const rect = frame.getBoundingClientRect();
         const vw = introVideo.videoWidth || 1280,
           vh = introVideo.videoHeight || 720;

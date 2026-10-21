@@ -49,6 +49,7 @@ Mr.Doc bridges this gap:
 - **Multimodal AI OCR:** Automatically reads and parses medications, dosages, lab values, and clinical findings.
 - **Plain-Language Explanations:** Explains what high/low test numbers mean and highlights danger signs without clinical jargon.
 - **Interactive Animated Doctor:** A friendly chibi avatar with real-time facial expressions, gaze tracking, and speech animations.
+- **Optional 3D Doctor:** Drop a rigged `assets/mrdoc.glb` in place and the sprite stage becomes a Three.js character with six Mixamo clips (idle, wave, think, talk, explain, reassure) blended over 0.35 s. Without the model the 2D sprites keep working. See the [3D character pipeline](docs/3d-mrdoc-pipeline.md).
 - **Speaks Your Language:** Instant translation and native voice playback in **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)**.
 - **Browser-based record storage:** The app saves records in browser local storage; this storage is not encrypted by the app. Uploaded documents and chat context are sent to the AI provider configured for the app when the user requests analysis or chat. No patient database is hosted by this prototype.
 
@@ -115,7 +116,7 @@ Here is how the application screen is laid out when you launch Mr.Doc:
 
 ### 4. FHIR-Style Record Data
 
-- Each extracted record includes a **FHIR-style JSON bundle** with `Composition`, `Patient`, `Condition`, `Observation`, and `MedicationRequest` resources. This structure is available in the analysis response for technical review, while the patient interface focuses on the health record itself.
+- Each extracted record includes a **FHIR-style JSON bundle** with `DocumentReference`, `Patient`, `Condition`, `Observation`, and `MedicationRequest` resources. My Health offers local health backup/import using this resource structure.
 - The bundle has not been validated against an ABDM profile. Mr.Doc does not authenticate an ABHA ID or connect to ABDM. The architecture diagram below shows where a future standards integration would fit.
 
 ### 5. 🖨️ Print-Friendly & Timeline History
@@ -268,12 +269,18 @@ The `.env` file accepts the following parameters:
 │   ├── h_happy.png, h_gaze.png...   # Animated head expression frames
 │   ├── b_b_down.png, b_b_open...    # Animated body pose frames
 │   ├── *_embedded.png               # Preserved expression-frame images
-│   └── voice-orb.html               # Animated voice-listening control
+│   ├── voice-orb.html               # Animated voice-listening control
+│   └── vendor/three/                # Locally vendored Three.js + GLTFLoader
+├── tools/
+│   ├── pack_mrdoc_glb.py            # Blender script: pack the six Mixamo clips into one GLB
+│   └── validate_mrdoc_glb.mjs       # Checks clips, skin, and file size before serving
+├── docs/3d-mrdoc-pipeline.md        # Mixamo → Blender → Three.js character guide
 ├── frames/                          # Video animation sequences & outputs
 │   └── outputs/animation.mp4        # Rendered doctor speech video demo
 ├── .env.example                     # Sample environment variable template
 ├── .gitignore                       # Git ignore rules (.env, caches, etc.)
 ├── app.js                           # Core frontend application logic & character controller
+├── mrdoc3d.js                       # Lazy 3D stage: GLB loader, clip crossfades, 2D fallback
 ├── Mr.Doc – Health Copilot (3).html # Main web interface; loads the shared CSS and JS
 ├── README.md                        # Documentation & setup guide
 ├── server.py                        # Zero-dependency Python backend & AI router
@@ -281,6 +288,8 @@ The `.env` file accepts the following parameters:
 ```
 
 The HTML page is the shell. The shared interface behavior lives in `app.js`, and its styles live in `styles.css`; the voice orb animation lives in `assets/voice-orb.html`.
+
+Photo upload, upload retry, optional ABHA card transcription, larger text, and local health backup/import are described in [Patient controls and health files](docs/usability-and-health-files.md). `health-data.js` contains the shared health-file parsing and export logic; it does not call a remote service during import.
 
 ---
 
@@ -292,6 +301,7 @@ The HTML page is the shell. The shared interface behavior lives in `app.js`, and
 | `GET`  | `/api/sample-records` | Returns pre-configured clinical sample records with full multilingual translations.       |
 | `POST` | `/api/chat`           | Accepts `{ prompt, language, voice }` and streams back AI doctor guidance + audio.        |
 | `POST` | `/api/analyze-record` | Accepts base64 encoded document image/PDF or `sampleId`, returns structured medical JSON. |
+| `POST` | `/api/analyze-abha` | Transcribes a visible ABHA number/address from a card image; does not link or verify an account. |
 
 ---
 

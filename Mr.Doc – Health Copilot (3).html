@@ -248,6 +248,7 @@
         <div class="stagebox" id="sb" data-mode="idle">
           <div class="stage">
             <div class="figure char" id="stage">
+              <canvas id="mrdoc3d" class="mrdoc3d" aria-hidden="true"></canvas>
               <div id="bd"></div>
               <div id="hw"><div id="hd"></div></div>
               <div class="bubble"><i></i><i></i><i></i></div>
@@ -301,6 +302,36 @@
               type="file"
               id="file-inp"
               accept="image/png,image/jpeg,image/webp,application/pdf"
+              style="display: none"
+            />
+
+            <!-- Take Photo Button -->
+            <button
+              class="btn-upload-report btn-take-photo"
+              id="rec-take"
+              title="Take Photo of Prescription or Lab Report"
+              type="button"
+            >
+              <svg
+                class="up-ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span class="up-label">Take Photo</span>
+            </button>
+            <input
+              type="file"
+              id="file-take"
+              accept="image/*"
+              capture="environment"
               style="display: none"
             />
 
@@ -361,8 +392,31 @@
       </div>
     </main>
 
+          <!-- Upload Retry Banner -->
+          <div role="status" id="upload-retry-banner" class="upload-retry-banner" hidden>
+            <div class="retry-msg">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <div><strong id="upload-retry-file" class="upload-file-name"></strong><span id="upload-retry-text">Upload was interrupted or service was busy.</span></div>
+            </div>
+            <button class="btn-sm btn-pri" id="upload-retry-btn" type="button">Try again</button>
+            <button id="upload-retry-dismiss" type="button" class="btn-sm btn-sec" aria-label="Dismiss upload message">Dismiss</button>
+          </div>
+
+
     <div id="analysis-overlay" class="analysis-overlay" role="status" aria-live="polite" hidden>
-      <div class="analysis-card"><div class="analysis-spinner" aria-hidden="true"></div><h2>Analyzing your document</h2><p id="analysis-status-text">Checking the image and reading visible text…</p><small>This can take a few moments. Please keep this page open.</small></div>
+      <div class="analysis-card">
+        <h2>Reading your report</h2>
+        <p id="analysis-file-name" class="upload-file-name"></p>
+        <p id="analysis-status-text">Reading your report and writing a simple summary...</p>
+        <div class="upload-progress-bar" role="progressbar" aria-label="Report analysis" aria-valuemin="0" aria-valuemax="100">
+          <div class="upload-progress-fill" id="upload-progress-fill"></div>
+        </div>
+        <small>This can take a few moments. Please keep this page open.</small>
+      </div>
     </div>
     <div id="ocr-review-overlay" class="ocr-review-overlay" hidden>
       <section class="ocr-review-dialog" role="dialog" aria-modal="true" aria-labelledby="ocr-review-title" tabindex="-1">
@@ -379,7 +433,18 @@
     </div>
 
 
+    <script src="health-data.js"></script>
     <script src="app.js"></script>
+    <script>
+      // The 3D stage is an ES module; file:// blocks module loading, so the
+      // sprite stage stays in charge when the page is opened without a server.
+      if (location.protocol !== "file:") {
+        var mrdocStage = document.createElement("script");
+        mrdocStage.type = "module";
+        mrdocStage.src = "mrdoc3d.js";
+        document.body.appendChild(mrdocStage);
+      }
+    </script>
 
 
   </body>
