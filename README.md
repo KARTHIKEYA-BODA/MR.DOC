@@ -49,7 +49,7 @@ Mr.Doc bridges this gap:
 - **Multimodal AI OCR:** Automatically reads and parses medications, dosages, lab values, and clinical findings.
 - **Plain-Language Explanations:** Explains what high/low test numbers mean and highlights danger signs without clinical jargon.
 - **Interactive Animated Doctor:** A friendly chibi avatar with real-time facial expressions, gaze tracking, and speech animations.
-- **Optional 3D Doctor:** Drop a rigged `assets/mrdoc.glb` in place and the sprite stage becomes a Three.js character with six Mixamo clips (idle, wave, think, talk, explain, reassure) blended over 0.35 s. Without the model the 2D sprites keep working. See the [3D character pipeline](docs/3d-mrdoc-pipeline.md).
+- **3D Doctor:** The chat stage loads `assets/mrdoc.glb` in Three.js with six clips (idle, wave, think, talk, explain, reassure) blended over 0.35 s. A skinned placeholder ships so 3D is on by default; replace the file with a Mixamo pack when you have one. If the model is missing, the 2D sprites keep working. See the [3D character pipeline](docs/3d-mrdoc-pipeline.md).
 - **Speaks Your Language:** Instant translation and native voice playback in **English**, **Hindi (हिन्दी)**, **Telugu (తెలుగు)**, and **Tamil (தமிழ்)**.
 - **Browser-based record storage:** The app saves records in browser local storage; this storage is not encrypted by the app. Uploaded documents and chat context are sent to the AI provider configured for the app when the user requests analysis or chat. No patient database is hosted by this prototype.
 
@@ -270,8 +270,10 @@ The `.env` file accepts the following parameters:
 │   ├── b_b_down.png, b_b_open...    # Animated body pose frames
 │   ├── *_embedded.png               # Preserved expression-frame images
 │   ├── voice-orb.html               # Animated voice-listening control
+│   ├── mrdoc.glb                    # Packed 3D doctor (placeholder until Mixamo export)
 │   └── vendor/three/                # Locally vendored Three.js + GLTFLoader
 ├── tools/
+│   ├── make_placeholder_mrdoc.mjs   # Builds the skinned placeholder doctor GLB
 │   ├── pack_mrdoc_glb.py            # Blender script: pack the six Mixamo clips into one GLB
 │   └── validate_mrdoc_glb.mjs       # Checks clips, skin, and file size before serving
 ├── docs/3d-mrdoc-pipeline.md        # Mixamo → Blender → Three.js character guide
