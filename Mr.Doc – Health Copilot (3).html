@@ -17,7 +17,7 @@
       as="image"
       href="assets/b_b_down.png"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=illustrated-20261022" />
   </head>
   <body class="intro-active">
     <!-- Welcome screen; the animated introduction starts only after the visitor clicks. -->
@@ -105,6 +105,27 @@
         role="status"
         aria-live="polite"
       ></p>
+      <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
+        <button class="auth-back" id="auth-back" type="button" aria-label="Return to welcome page">← Back</button>
+        <div class="auth-card">
+          <div class="auth-brand"><span>+</span><b>Mr.Doc</b></div>
+          <p class="auth-kicker">Your private health workspace</p>
+          <h2 id="auth-title">Welcome</h2>
+          <p id="auth-description">Sign in to continue to your health assistant.</p>
+          <div class="auth-tabs" role="tablist" aria-label="Account options">
+            <button id="auth-signin-tab" class="on" type="button" role="tab" aria-selected="true">Sign in</button>
+            <button id="auth-signup-tab" type="button" role="tab" aria-selected="false">Create account</button>
+          </div>
+          <form id="auth-form">
+            <label id="auth-name-row" hidden>Full name<input id="auth-name" type="text" autocomplete="name" maxlength="80" /></label>
+            <label>Email address<input id="auth-email" type="email" autocomplete="email" required /></label>
+            <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="6" required /></label>
+            <button class="auth-submit" id="auth-submit" type="submit">Sign in and continue</button>
+          </form>
+          <p class="auth-note">Prototype sign in: details stay on this browser and are not sent to an account service.</p>
+          <p id="auth-status" class="auth-status" role="status"></p>
+        </div>
+      </section>
     </section>
 
     <!-- Top Navigation Header -->
@@ -160,7 +181,7 @@
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
           </svg>
-          <span>Tutorial</span>
+          <span data-i18n="tutorial">Tutorial</span>
         </button>
         <!-- Language Dropdown on Front Page -->
         <div class="lang-dropdown-wrapper">
@@ -197,7 +218,7 @@
       aria-label="Navigation menu"
     >
       <div class="drawer-header">
-        <div class="brand">Mr.Doc AI</div>
+        <div class="brand"><span class="drawer-brand-mark">+</span><span>Mr.Doc</span><small>Health Copilot</small></div>
         <button class="drawer-close" id="drawer-close" aria-label="Close menu">
           ✕
         </button>
@@ -205,20 +226,21 @@
 
       <!-- Recent Chats Placed Above Navigation -->
       <div class="drawer-chats-sec">
-        <div class="sec-label">Recent Chats</div>
+        <div class="sec-label" data-i18n="recentChats">Recent chats</div>
         <div id="drawer-chats-list"></div>
       </div>
 
       <!-- Navigation Items without Logos -->
       <div class="drawer-nav">
-        <button class="nav-item on" data-page="chat">
-          New chat with MR.Doc
+        <button class="nav-item on" data-page="chat" data-icon="✦">
+          <span data-i18n="newChat">New chat</span>
         </button>
-        <button class="nav-item" data-page="records">
-          Your medical records
+        <button class="nav-item" data-page="records" data-icon="▤">
+          <span data-i18n="records">Medical records</span>
         </button>
-        <button class="nav-item" data-page="timeline">Health Timeline</button>
-        <button class="nav-item" data-page="details">Health details &amp; progress</button>
+        <button class="nav-item" data-page="timeline" data-icon="⌁"><span data-i18n="timeline">Health timeline</span></button>
+        <button class="nav-item body-check-nav" data-page="body" data-icon="◎"><span data-i18n="bodyCheck">Full Body Check</span><small data-i18n="bodyCheckHint">See marked health areas</small></button>
+        <button class="nav-item" data-page="details" data-icon="♡"><span data-i18n="details">Health details</span></button>
       </div>
 
       <!-- Guide with Light Clarity (Subtle, Not Entirely Visible) -->
@@ -228,13 +250,14 @@
           id="subtle-guide-btn"
           data-page="guide"
         >
-          Health Guidance
+          <span data-i18n="guidance">Health guidance</span>
         </button>
       </div>
       <!-- Profile Pinned at Bottom of Drawer: "My Health" -->
       <div class="drawer-profile-bottom">
         <button class="profile-bottom-btn" data-page="me">
-          <span class="user-meta-single">My Health</span>
+          <span class="profile-mark" aria-hidden="true">M</span>
+          <span class="user-meta-single" data-i18n="myHealth">My Health</span>
           <span class="chevron">›</span>
         </button>
       </div>
@@ -259,7 +282,7 @@
 
         <!-- Chat Conversation Section -->
         <section class="chat">
-          <!-- Suggestions on Top, not side-by-side -->
+          <!-- Suggestions stay stacked for quick scanning. -->
           <div class="chips-top" id="chips"></div>
 
           <!-- Message Stream -->
@@ -276,28 +299,13 @@
 
           <!-- Chat Input Bar -->
           <div class="bar">
-            <!-- Big, Visible Upload Health Report Button -->
-            <button
-              class="btn-upload-report"
-              id="rec-up"
-              title="Upload Medical Record / Prescription"
-            >
-              <svg
-                class="up-ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 15V4.5" />
-                <path d="M7.2 9.2L12 4.5l4.8 4.7" />
-                <path d="M4.8 14v4.6h14.4V14" />
-              </svg>
-              <span class="up-label">Upload Report</span>
-            </button>
+            <div class="attachment-picker" id="attachment-picker">
+              <button class="attachment-plus" id="attachment-toggle" type="button" aria-label="Add a health report" aria-expanded="false">+</button>
+              <div class="attachment-menu" id="attachment-menu" hidden>
+                <button class="attachment-choice" id="rec-up" type="button"><span aria-hidden="true">⇧</span><b data-i18n="uploadReport">Upload report</b><small>PDF or image</small></button>
+                <button class="attachment-choice" id="rec-take" type="button"><span aria-hidden="true">◉</span><b data-i18n="takePhoto">Take photo</b><small>Use your camera</small></button>
+              </div>
+            </div>
             <input
               type="file"
               id="file-inp"
@@ -305,28 +313,6 @@
               style="display: none"
             />
 
-            <!-- Take Photo Button -->
-            <button
-              class="btn-upload-report btn-take-photo"
-              id="rec-take"
-              title="Take Photo of Prescription or Lab Report"
-              type="button"
-            >
-              <svg
-                class="up-ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-              <span class="up-label">Take Photo</span>
-            </button>
             <input
               type="file"
               id="file-take"
@@ -390,6 +376,9 @@
       <div class="page-view" id="view-details">
         <div class="full-page-container" id="page-details-content"></div>
       </div>
+      <div class="page-view" id="view-body">
+        <div class="full-page-container" id="page-body-content"></div>
+      </div>
     </main>
 
           <!-- Upload Retry Banner -->
@@ -434,14 +423,14 @@
 
 
     <script src="health-data.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=illustrated-20261022"></script>
     <script>
-      // The 3D stage is an ES module; file:// blocks module loading, so the
-      // sprite stage stays in charge when the page is opened without a server.
-      if (location.protocol !== "file:") {
+      // Keep the illustrated stage as the default. Add ?preview3d=1 when
+      // explicitly reviewing the GLB character through a local server.
+      if (location.protocol !== "file:" && new URLSearchParams(location.search).get("preview3d") === "1") {
         var mrdocStage = document.createElement("script");
         mrdocStage.type = "module";
-        mrdocStage.src = "mrdoc3d.js";
+        mrdocStage.src = "mrdoc3d.js?v=illustrated-20261022";
         document.body.appendChild(mrdocStage);
       }
     </script>

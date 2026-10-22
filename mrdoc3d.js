@@ -13,7 +13,7 @@
   "use strict";
 
   const params = new URLSearchParams(location.search);
-  const MODEL_URL = params.get("mrdoc") || "assets/mrdoc.glb";
+  const MODEL_URL = params.get("mrdoc") || "assets/mrdoc-v2.glb";
   const FADE_SECONDS = 0.35;
   const FALLBACK_CLIP = "idle";
 

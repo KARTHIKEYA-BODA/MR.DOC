@@ -18,6 +18,7 @@
             ? "http://localhost:8000/api/analyze-record"
             : "/api/analyze-record",
         abhaCardEndpoint: window.location.protocol === "file:" ? "http://localhost:8000/api/analyze-abha" : "/api/analyze-abha",
+        translateEndpoint: window.location.protocol === "file:" ? "http://localhost:8000/api/translate-record" : "/api/translate-record",
       };
 
       async function requestJson(url, payload, signal) {
@@ -102,6 +103,103 @@
         away: { m: "idle", f: "back" },
       };
       const $ = (s) => document.querySelector(s);
+
+      const UI_TEXT = {
+        en: {
+          tutorial: "Tutorial", recentChats: "Recent chats", newChat: "New chat", records: "Medical records",
+          timeline: "Health timeline", bodyCheck: "Full Body Check", bodyCheckHint: "See marked health areas",
+          details: "Health details", guidance: "Health guidance", myHealth: "My Health", uploadReport: "Upload report",
+          takePhoto: "Take photo", backChat: "Back to chat", backHealth: "Back to My Health",
+          welcome: "How can I help you today?", welcomeNote: "Ask a health question or upload a report to understand it in simple language.",
+          bodyTitle: "Full Body Check", bodyIntro: "Health areas found in your uploaded records are shown here.",
+          noBody: "No body area has been identified in your uploaded records yet.", wholeBody: "Whole-body condition",
+          locationUnknown: "No single injury location was recorded.", recordSource: "From uploaded record", openRecord: "Open record",
+          front: "Front", side: "Side", back: "Back", rotateHint: "Use the arrows to see another side.", myHealthTitle: "My Health",
+        },
+        hi: {
+          tutorial: "ट्यूटोरियल", recentChats: "हाल की चैट", newChat: "नई चैट", records: "मेडिकल रिकॉर्ड",
+          timeline: "स्वास्थ्य समयरेखा", bodyCheck: "पूरे शरीर की जाँच", bodyCheckHint: "चिह्नित स्वास्थ्य क्षेत्र देखें",
+          details: "स्वास्थ्य विवरण", guidance: "स्वास्थ्य मार्गदर्शन", myHealth: "मेरा स्वास्थ्य", uploadReport: "रिपोर्ट अपलोड करें",
+          takePhoto: "फोटो लें", backChat: "चैट पर वापस", backHealth: "मेरा स्वास्थ्य पर वापस",
+          welcome: "मैं आज आपकी कैसे मदद कर सकता हूँ?", welcomeNote: "स्वास्थ्य प्रश्न पूछें या रिपोर्ट अपलोड करके उसे सरल भाषा में समझें।",
+          bodyTitle: "पूरे शरीर की जाँच", bodyIntro: "आपके अपलोड किए रिकॉर्ड में मिले स्वास्थ्य क्षेत्र यहाँ दिखाए जाते हैं।",
+          noBody: "आपके रिकॉर्ड में अभी कोई शरीर का क्षेत्र नहीं मिला।", wholeBody: "पूरे शरीर से जुड़ी स्थिति",
+          locationUnknown: "कोई एक चोट का स्थान दर्ज नहीं है।", recordSource: "अपलोड किए रिकॉर्ड से", openRecord: "रिकॉर्ड खोलें",
+          front: "सामने", side: "बगल", back: "पीछे", rotateHint: "दूसरी ओर देखने के लिए तीर दबाएँ।", myHealthTitle: "मेरा स्वास्थ्य",
+        },
+        te: {
+          tutorial: "ట్యుటోరియల్", recentChats: "ఇటీవలి చాట్‌లు", newChat: "కొత్త చాట్", records: "వైద్య రికార్డులు",
+          timeline: "ఆరోగ్య కాలక్రమం", bodyCheck: "పూర్తి శరీర పరిశీలన", bodyCheckHint: "గుర్తించిన ఆరోగ్య ప్రాంతాలు చూడండి",
+          details: "ఆరోగ్య వివరాలు", guidance: "ఆరోగ్య మార్గదర్శకం", myHealth: "నా ఆరోగ్యం", uploadReport: "రిపోర్ట్ అప్‌లోడ్",
+          takePhoto: "ఫోటో తీయండి", backChat: "చాట్‌కు తిరిగి", backHealth: "నా ఆరోగ్యానికి తిరిగి",
+          welcome: "ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?", welcomeNote: "ఆరోగ్య ప్రశ్న అడగండి లేదా రిపోర్ట్‌ను సులభంగా అర్థం చేసుకోవడానికి అప్‌లోడ్ చేయండి.",
+          bodyTitle: "పూర్తి శరీర పరిశీలన", bodyIntro: "మీరు అప్‌లోడ్ చేసిన రికార్డుల్లో ఉన్న ఆరోగ్య ప్రాంతాలు ఇక్కడ కనిపిస్తాయి.",
+          noBody: "మీ రికార్డుల్లో ఇంకా శరీర ప్రాంతం గుర్తించబడలేదు.", wholeBody: "మొత్తం శరీరానికి సంబంధించిన పరిస్థితి",
+          locationUnknown: "ఒకే గాయం ప్రాంతం నమోదు కాలేదు.", recordSource: "అప్‌లోడ్ చేసిన రికార్డు నుండి", openRecord: "రికార్డు తెరవండి",
+          front: "ముందు", side: "పక్క", back: "వెనుక", rotateHint: "మరో వైపు చూడటానికి బాణాలను ఉపయోగించండి.", myHealthTitle: "నా ఆరోగ్యం",
+        },
+        ta: {
+          tutorial: "வழிகாட்டி", recentChats: "சமீபத்திய உரையாடல்கள்", newChat: "புதிய உரையாடல்", records: "மருத்துவ பதிவுகள்",
+          timeline: "உடல்நல காலவரிசை", bodyCheck: "முழு உடல் பரிசோதனை", bodyCheckHint: "குறிக்கப்பட்ட உடல் பகுதிகளைப் பார்க்கவும்",
+          details: "உடல்நல விவரங்கள்", guidance: "உடல்நல வழிகாட்டல்", myHealth: "என் உடல்நலம்", uploadReport: "அறிக்கையை பதிவேற்று",
+          takePhoto: "படம் எடுக்கவும்", backChat: "உரையாடலுக்கு திரும்பு", backHealth: "என் உடல்நலத்திற்கு திரும்பு",
+          welcome: "இன்று நான் உங்களுக்கு எப்படி உதவலாம்?", welcomeNote: "உடல்நல கேள்வி கேளுங்கள் அல்லது அறிக்கையை எளிய மொழியில் புரிந்துகொள்ள பதிவேற்றுங்கள்.",
+          bodyTitle: "முழு உடல் பரிசோதனை", bodyIntro: "நீங்கள் பதிவேற்றிய மருத்துவ பதிவுகளில் உள்ள உடல் பகுதிகள் இங்கே காட்டப்படும்.",
+          noBody: "உங்கள் பதிவுகளில் இன்னும் எந்த உடல் பகுதியும் கண்டறியப்படவில்லை.", wholeBody: "முழு உடலைச் சார்ந்த நிலை",
+          locationUnknown: "ஒரு குறிப்பிட்ட காய இடம் பதிவு செய்யப்படவில்லை.", recordSource: "பதிவேற்றிய பதிவிலிருந்து", openRecord: "பதிவைத் திற",
+          front: "முன்", side: "பக்கம்", back: "பின்", rotateHint: "மற்றொரு பக்கத்தைப் பார்க்க அம்புகளைப் பயன்படுத்தவும்.", myHealthTitle: "என் உடல்நலம்",
+        },
+      };
+      const tr = (key) => UI_TEXT[S.lang]?.[key] || UI_TEXT.en[key] || key;
+      const UI_REPLACE = {
+        hi: {
+          "Your medical records": "आपके मेडिकल रिकॉर्ड", "Search your records": "अपने रिकॉर्ड खोजें", "Your uploaded records will appear here.": "आपके अपलोड किए रिकॉर्ड यहाँ दिखाई देंगे।",
+          "Add a medical record": "मेडिकल रिकॉर्ड जोड़ें", "Choose file": "फ़ाइल चुनें", "Take photo": "फोटो लें", "Unified Health Timeline": "एकीकृत स्वास्थ्य समयरेखा",
+          "All Records": "सभी रिकॉर्ड", "Prescriptions": "पर्चे", "Lab Reports": "लैब रिपोर्ट", "Needs Attention": "ध्यान देने योग्य", "Ask Mr.Doc": "Mr.Doc से पूछें",
+          "Upload or view reports": "रिपोर्ट अपलोड करें या देखें", "View timeline": "समयरेखा देखें", "Personal details": "व्यक्तिगत विवरण", "Edit": "संपादित करें",
+          "Recorded conditions": "दर्ज स्थितियाँ", "Needs attention": "ध्यान देने योग्य", "Recorded medicines": "दर्ज दवाएँ", "Recent records": "हाल के रिकॉर्ड",
+          "Health details & progress": "स्वास्थ्य विवरण और प्रगति", "Health details": "स्वास्थ्य विवरण", "Save Profile": "प्रोफ़ाइल सहेजें", "Records": "रिकॉर्ड", "Medicines": "दवाएँ", "Out of range": "सीमा से बाहर",
+        },
+        te: {
+          "Your medical records": "మీ వైద్య రికార్డులు", "Search your records": "మీ రికార్డులను వెతకండి", "Your uploaded records will appear here.": "మీరు అప్‌లోడ్ చేసిన రికార్డులు ఇక్కడ కనిపిస్తాయి.",
+          "Add a medical record": "వైద్య రికార్డు జోడించండి", "Choose file": "ఫైల్ ఎంచుకోండి", "Take photo": "ఫోటో తీయండి", "Unified Health Timeline": "ఏకీకృత ఆరోగ్య కాలక్రమం",
+          "All Records": "అన్ని రికార్డులు", "Prescriptions": "ప్రిస్క్రిప్షన్లు", "Lab Reports": "ల్యాబ్ రిపోర్టులు", "Needs Attention": "శ్రద్ధ అవసరం", "Ask Mr.Doc": "Mr.Doc‌ను అడగండి",
+          "Upload or view reports": "రిపోర్టులు అప్‌లోడ్ చేయండి లేదా చూడండి", "View timeline": "కాలక్రమం చూడండి", "Personal details": "వ్యక్తిగత వివరాలు", "Edit": "సవరించండి",
+          "Recorded conditions": "నమోదైన పరిస్థితులు", "Needs attention": "శ్రద్ధ అవసరం", "Recorded medicines": "నమోదైన మందులు", "Recent records": "ఇటీవలి రికార్డులు",
+          "Health details & progress": "ఆరోగ్య వివరాలు మరియు పురోగతి", "Health details": "ఆరోగ్య వివరాలు", "Save Profile": "ప్రొఫైల్ సేవ్ చేయండి", "Records": "రికార్డులు", "Medicines": "మందులు", "Out of range": "పరిధి వెలుపల",
+        },
+        ta: {
+          "Your medical records": "உங்கள் மருத்துவ பதிவுகள்", "Search your records": "உங்கள் பதிவுகளைத் தேடுங்கள்", "Your uploaded records will appear here.": "நீங்கள் பதிவேற்றிய பதிவுகள் இங்கே தோன்றும்.",
+          "Add a medical record": "மருத்துவ பதிவைச் சேர்க்கவும்", "Choose file": "கோப்பைத் தேர்ந்தெடு", "Take photo": "படம் எடுக்கவும்", "Unified Health Timeline": "ஒருங்கிணைந்த உடல்நல காலவரிசை",
+          "All Records": "அனைத்து பதிவுகள்", "Prescriptions": "மருந்துச் சீட்டுகள்", "Lab Reports": "ஆய்வக அறிக்கைகள்", "Needs Attention": "கவனம் தேவை", "Ask Mr.Doc": "Mr.Doc-ஐ கேளுங்கள்",
+          "Upload or view reports": "அறிக்கைகளை பதிவேற்றவும் அல்லது பார்க்கவும்", "View timeline": "காலவரிசையைப் பார்க்கவும்", "Personal details": "தனிப்பட்ட விவரங்கள்", "Edit": "திருத்து",
+          "Recorded conditions": "பதிவான நிலைகள்", "Needs attention": "கவனம் தேவை", "Recorded medicines": "பதிவான மருந்துகள்", "Recent records": "சமீபத்திய பதிவுகள்",
+          "Health details & progress": "உடல்நல விவரங்கள் மற்றும் முன்னேற்றம்", "Health details": "உடல்நல விவரங்கள்", "Save Profile": "சுயவிவரத்தைச் சேமி", "Records": "பதிவுகள்", "Medicines": "மருந்துகள்", "Out of range": "வரம்புக்கு வெளியே",
+        },
+      };
+      const originalUiText = new WeakMap();
+      function applyInterfaceLanguage() {
+        document.documentElement.lang = S.lang;
+        document.querySelectorAll("[data-i18n]").forEach((node) => {
+          const text = tr(node.dataset.i18n);
+          if (text) node.textContent = text;
+        });
+        const input = $("#inp");
+        if (input) input.placeholder = ({ en: "Ask Mr.Doc about symptoms or medical records…", hi: "लक्षणों या मेडिकल रिकॉर्ड के बारे में पूछें…", te: "లక్షణాలు లేదా వైద్య రికార్డుల గురించి అడగండి…", ta: "அறிகுறிகள் அல்லது மருத்துவ பதிவுகள் பற்றி கேளுங்கள்…" })[S.lang];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          let source = originalUiText.get(node);
+          const current = node.nodeValue.trim();
+          if (!source && (UI_REPLACE.hi[current] || UI_REPLACE.te[current] || UI_REPLACE.ta[current])) {
+            source = current;
+            originalUiText.set(node, source);
+          }
+          if (!source) continue;
+          const replacement = S.lang === "en" ? source : UI_REPLACE[S.lang]?.[source] || source;
+          node.nodeValue = node.nodeValue.replace(current, replacement);
+        }
+      }
 
       const esc = (value) =>
         String(value ?? "").replace(
@@ -720,7 +818,7 @@
         if (!c || !c.msgs.length) {
           const welcome = document.createElement("div");
           welcome.className = "chat-empty-state";
-          welcome.innerHTML = "<strong>How can I help you today?</strong><span>Ask a health question or upload a report to understand it in simple language.</span>";
+          welcome.innerHTML = `<strong>${esc(tr("welcome"))}</strong><span>${esc(tr("welcomeNote"))}</span>`;
           $("#msgs").appendChild(welcome);
         }
 
@@ -745,6 +843,7 @@
             ch.appendChild(b);
           });
         }
+        applyInterfaceLanguage();
       }
 
       // ---------------------------------------------------------------------------
@@ -764,10 +863,12 @@
           $("#burger-btn").focus();
       }
 
-      function switchPage(page) {
+      let returnPage = "chat";
+      function switchPage(page, options = {}) {
         if (!$(`#view-${page}`)) return;
         cancelPendingChat();
         stopSpeech();
+        if (page !== activePage && !options.fromBack) returnPage = activePage;
         activePage = page;
         openDrawer(false);
 
@@ -784,6 +885,9 @@
           renderChat();
         } else {
           $("#top-page-nav").style.display = "block";
+          const back = $("#btn-back-chat");
+          back.dataset.target = returnPage === "me" ? "me" : "chat";
+          back.textContent = `← ${tr(returnPage === "me" ? "backHealth" : "backChat")}`;
           renderActivePage();
         }
 
@@ -841,6 +945,8 @@
         else if (activePage === "me") renderProfilePage();
         else if (activePage === "guide") renderGuidePage();
         else if (activePage === "details") renderHealthDetailsPage();
+        else if (activePage === "body") renderBodyMapPage();
+        applyInterfaceLanguage();
       }
 
       // ---------------------------------------------------------------------------
@@ -866,9 +972,8 @@
         const trackingRecords = personalRecords().filter((r) => r.injuryDescription || r.diagnoses.length || r.bodySite);
         const itemCards = trackingRecords.map((recordItem) => {
           const progress = S.healthItems.find((item) => item.recordId === recordItem.id);
-          const site = recordItem.bodySite.toLowerCase();
           const label = recordItem.injuryDescription || recordItem.diagnoses.join(" · ");
-          const map = /foot|sole|heel|toe/.test(site) ? footSvg(site) : recordItem.bodySite ? `<div class="body-map-placeholder" aria-label="Body area stated in uploaded record">◎<small>${esc(recordItem.bodySite)}</small></div>` : "";
+          const map = anatomyImage(recordItem);
           const severity = recordItem.documentedSeverity;
           const started = recordItem.injuryStartDate;
           const days = started ? daysSince(started) : null;
@@ -945,6 +1050,92 @@
           document.body.classList.add("printing-visit-summary");
           window.print();
         });
+      }
+
+      function hasDocumentedBodySite(record) {
+        const site = String(record?.bodySite || "").trim().toLowerCase();
+        if (site && !/^(unknown|unspecified|not stated|n\/a|general|whole body)$/.test(site)) return true;
+        const injury = String(record?.injuryDescription || "").toLowerCase();
+        return /\b(head|neck|shoulder|chest|back|abdomen|stomach|waist|hip|arm|elbow|wrist|hand|finger|thigh|leg|knee|ankle|foot|feet|heel|toe|sole)\b/.test(injury);
+      }
+
+      function bodySiteText(record) {
+        return `${record?.bodySite || ""} ${record?.injuryDescription || ""}`.trim().toLowerCase();
+      }
+
+      function bodyLocation(record) {
+        const text = bodySiteText(record);
+        if (/head|face/.test(text)) return { x: 50, y: 10 };
+        if (/neck|shoulder/.test(text)) return { x: 50, y: 23 };
+        if (/chest|heart|lung/.test(text)) return { x: 50, y: 34 };
+        if (/abdomen|stomach|waist/.test(text)) return { x: 50, y: 47 };
+        if (/hip|groin/.test(text)) return { x: 50, y: 57 };
+        if (/hand|finger|wrist/.test(text)) return { x: 50, y: 54 };
+        if (/arm|elbow/.test(text)) return { x: 50, y: 42 };
+        if (/knee/.test(text)) return { x: 50, y: 76 };
+        if (/leg|thigh/.test(text)) return { x: 50, y: 70 };
+        if (/foot|feet|heel|toe|sole|ankle/.test(text)) return { x: 50, y: /sole|plantar/.test(text) ? 96 : 92 };
+        if (/back|spine/.test(text)) return { x: 50, y: 42 };
+        return { x: 50, y: 50 };
+      }
+
+      function bodyMarkerX(record, viewIndex = 0.5) {
+        const text = bodySiteText(record);
+        const side = /\bleft\b/.test(text) ? 14 : /\bright\b/.test(text) ? 24 : 19;
+        return Math.round(side + Math.max(0, Math.min(1, Number(viewIndex))) * 64);
+      }
+
+      function anatomyImage(record) {
+        const text = bodySiteText(record);
+        let src = "assets/anatomy/full-body.jpg";
+        let alt = "Full body medical illustration";
+        if (/sole|plantar|bottom of (?:the )?foot/.test(text)) { src = "assets/anatomy/foot-sole.jpg"; alt = "Sole of foot medical illustration"; }
+        else if (/foot|feet|heel|toe|ankle/.test(text)) { src = "assets/anatomy/foot-top.jpg"; alt = "Top of foot medical illustration"; }
+        else if (/head|face|neck/.test(text)) { src = "assets/anatomy/head-neck.jpg"; alt = "Head and neck medical illustration"; }
+        else if (/hand|finger|wrist/.test(text)) { src = "assets/anatomy/hand.jpg"; alt = "Hand medical illustration"; }
+        else if (/leg|thigh|knee/.test(text)) { src = "assets/anatomy/leg.jpg"; alt = "Leg medical illustration"; }
+        else if (/back|spine/.test(text)) { src = "assets/anatomy/torso-back.jpg"; alt = "Back medical illustration"; }
+        else if (/chest|abdomen|stomach|waist|hip|groin/.test(text)) { src = "assets/anatomy/torso-front.jpg"; alt = "Front torso medical illustration"; }
+        const location = bodyLocation(record);
+        const marker = hasDocumentedBodySite(record)
+          ? `<span class="anatomy-marker" style="--marker-x:${bodyMarkerX(record, 0.5)}%;--marker-y:${location.y}%" aria-label="Recorded area: ${esc(record.bodySite || record.injuryDescription)}"></span>`
+          : "";
+        return `<figure class="anatomy-figure${marker ? " has-location" : " systemic"}"><div class="anatomy-image-wrap"><img src="${src}" alt="${alt}">${marker}</div><figcaption>${marker ? esc(record.bodySite || record.injuryDescription) : `${esc(tr("wholeBody"))} · health illustration · no location recorded`}</figcaption></figure>`;
+      }
+
+      function renderBodyMapPage() {
+        const el = $("#page-body-content");
+        if (!el) return;
+        const records = personalRecords().filter((record) => hasDocumentedBodySite(record) || record.diagnoses?.length || record.injuryDescription);
+        const markers = records.filter(hasDocumentedBodySite).map((record, index) => {
+          const location = bodyLocation(record);
+          const frontX = bodyMarkerX(record, 0) * 3;
+          const sideX = (bodyMarkerX(record, 0.5) - 33) * 3;
+          const backX = (bodyMarkerX(record, 1) - 66) * 3;
+          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)}"><span>${index + 1}</span></button>`;
+        }).join("");
+        const cards = records.map((record) => `<article class="body-finding-card">
+          ${anatomyImage(record)}
+          <div><span class="health-source-tag">${esc(tr("recordSource"))} · ${esc(record.date || "—")}</span><h3>${esc(record.injuryDescription || record.diagnoses?.join(" · ") || record.title || "Health record")}</h3><p>${esc(record.bodySite || tr("locationUnknown"))}</p><button class="btn-sm btn-sec" data-body-record="${esc(record.id)}" type="button">${esc(tr("openRecord"))}</button></div>
+        </article>`).join("");
+        el.innerHTML = `<header class="body-check-header"><div><span class="body-check-eyebrow">${esc(tr("myHealth"))}</span><h1>${esc(tr("bodyTitle"))}</h1><p>${esc(tr("bodyIntro"))}</p></div><button class="btn-sm btn-sec" type="button" data-go-health="me">← ${esc(tr("myHealth"))}</button></header>
+          <section class="full-body-overview" aria-labelledby="full-body-overview-title">
+            <div class="body-viewer-toolbar"><div><h2 id="full-body-overview-title">${esc(tr("bodyTitle"))}</h2><p>${esc(tr("rotateHint"))}</p></div><div class="body-view-buttons"><button type="button" data-body-view="front" class="on">${esc(tr("front"))}</button><button type="button" data-body-view="side">${esc(tr("side"))}</button><button type="button" data-body-view="back">${esc(tr("back"))}</button></div></div>
+            <div class="full-body-viewport view-front" id="full-body-viewport"><img src="assets/anatomy/full-body.jpg" alt="Front, side and back full body medical reference">${markers}</div>
+            ${records.some((record) => !hasDocumentedBodySite(record)) ? `<p class="systemic-condition-note"><span></span>${esc(tr("wholeBody"))}: ${esc(records.filter((record) => !hasDocumentedBodySite(record)).flatMap((record) => record.diagnoses || []).join(" · ") || tr("locationUnknown"))}</p>` : ""}
+          </section>
+          <section class="body-findings"><h2>${esc(tr("details"))}</h2>${cards || `<p class="body-empty">${esc(tr("noBody"))}</p>`}</section>`;
+        el.querySelectorAll("[data-body-view]").forEach((button) => button.onclick = () => {
+          el.querySelectorAll("[data-body-view]").forEach((item) => item.classList.toggle("on", item === button));
+          const viewport = el.querySelector("#full-body-viewport");
+          viewport.className = `full-body-viewport view-${button.dataset.bodyView}`;
+        });
+        el.querySelectorAll("[data-body-record]").forEach((button) => button.onclick = () => {
+          S.curRecord = button.dataset.bodyRecord;
+          save();
+          switchPage("records");
+        });
+        el.querySelector("[data-go-health]")?.addEventListener("click", () => switchPage("me", { fromBack: true }));
       }
 
       function checkMedicineReminders() {
@@ -1525,9 +1716,8 @@
           </article>
         `).join("");
         return `<section class="lab-trend-section" aria-labelledby="lab-trend-heading">
-          <div class="lab-trend-heading"><div><h2 id="lab-trend-heading">Lab results over time</h2><p>Side-by-side values from records for the same patient, with the same test name and recorded unit.</p></div></div>
-          ${cards || `<p class="lab-trend-empty">Comparisons appear when two dated reports identify the same patient and contain the same numeric test with the same recorded unit.</p>`}
-          <small class="lab-trend-note">These are the values as recorded in your reports. A change alone does not explain its cause or establish a diagnosis.</small>
+          <div class="lab-trend-heading"><div><h2 id="lab-trend-heading">Lab history</h2></div></div>
+          ${cards || `<p class="lab-trend-empty">Upload another dated report to see matching results together.</p>`}
         </section>`;
       }
 
@@ -1774,11 +1964,11 @@
         const uploadCta = `<button type="button" class="mh-link" data-go="records">Upload a report →</button>`;
 
         el.innerHTML = `
-    <h1 class="page-title">👤 My Health</h1>
+    <h1 class="page-title">${esc(tr("myHealthTitle"))}</h1>
     <div class="page-desc">Your personal profile and a live summary of everything found in your medical records.</div>
 
     <section class="mh-hero">
-      <div class="mh-avatar" id="mh-avatar">${esc(initials(S.profile.name)) || "👤"}</div>
+      <div class="mh-avatar" id="mh-avatar">${esc(initials(S.profile.name)) || "M"}</div>
       <div class="mh-hero-info">
         <h2 id="mh-name">${esc(plain(S.profile.name).trim()) || "Your name"}</h2>
         <p id="mh-sub">${esc(subText())}</p>
@@ -1799,14 +1989,16 @@
       <button type="button" class="btn-sm btn-pri" data-go="chat">Ask Mr.Doc</button>
       <button type="button" class="btn-sm btn-sec" data-go="records">Upload or view reports</button>
       <button type="button" class="btn-sm btn-sec" data-go="timeline">View timeline</button>
+      <button type="button" class="btn-sm btn-sec body-check-action" data-go="body">${esc(tr("bodyCheck"))}</button>
       <button class="btn-sm btn-sec" id="reader-mode" type="button" aria-pressed="${S.readerMode}">${S.readerMode ? "Use standard text" : "Use larger text"}</button>
     </nav>
 
     <div class="mh-grid">
       <div class="mh-col">
       <section class="mh-card">
-        <h3 class="mh-h">Personal details <small>Saved on this browser</small></h3>
-        <details class="profile-options"><summary>Update personal details (optional)</summary>
+        <div class="mh-card-heading"><h3 class="mh-h">Personal details <small>Saved on this browser</small></h3><button type="button" class="btn-sm btn-sec" id="edit-profile">Edit</button></div>
+        <dl class="profile-details-list">${F.map(([k, label]) => `<div><dt>${esc(label.replace(/\s*\(.*\)$/, ""))}</dt><dd>${esc(plain(S.profile[k]).trim() || "Not added")}</dd></div>`).join("")}</dl>
+        <div class="mh-profile-edit" id="mh-profile-edit" hidden>
         <p class="note">Uploads provide your record details automatically. Some lab ranges depend on age and sex; Mr.Doc keeps the range printed on the report.</p>
         <div class="mh-form">
           ${F.map(
@@ -1827,7 +2019,7 @@
           ).join("")}
         </div>
         <button type="button" class="form-btn" id="btn-save-prof">Save Profile</button>
-        </details>
+        </div>
       </section>
       ${profileToolsHtml()}
       </div>
@@ -1904,7 +2096,7 @@
         wireProfileTools(el);
         const updateHero = () => {
           const q = (id) => el.querySelector(id);
-          q("#mh-avatar").textContent = initials(S.profile.name) || "👤";
+          q("#mh-avatar").textContent = initials(S.profile.name) || "M";
           q("#mh-name").textContent =
             plain(S.profile.name).trim() || "Your name";
           q("#mh-sub").textContent = subText();
@@ -1945,9 +2137,16 @@
               setTimeout(() => {
                 sBtn.textContent = old;
               }, 1600);
+              el.querySelector("#mh-profile-edit").hidden = true;
+              renderProfilePage();
             }
             renderDrawerChats();
           };
+        el.querySelector("#edit-profile")?.addEventListener("click", () => {
+          const editor = el.querySelector("#mh-profile-edit");
+          editor.hidden = !editor.hidden;
+          if (!editor.hidden) el.querySelector("#prof-name")?.focus();
+        });
       }
 
       // 6. FULL PAGE: HEALTH GUIDANCE
@@ -2769,6 +2968,29 @@
       const langLabel = $("#cur-lang-label");
       const LANG_MAP = { en: "ENG", hi: "HIN", te: "TEL", ta: "TAM" };
 
+      async function ensureRecordTranslations(language) {
+        if (language === "en") return;
+        const missing = personalRecords().filter((record) => !record.translations?.[language]);
+        for (const record of missing) {
+          try {
+            const data = await requestJson(CONFIG.translateEndpoint, {
+              language,
+              record: {
+                summary: record.summary || "",
+                abnormalExplanation: record.abnormalExplanation || "",
+                selfCareTips: record.selfCareTips || [],
+                doctorQuestions: record.doctorQuestions || [],
+              },
+            });
+            record.translations ||= {};
+            record.translations[language] = data.translation;
+            save();
+          } catch (_) {
+            // Preserve the original record when the translation service is unavailable.
+          }
+        }
+      }
+
       function updateLangUI() {
         if (langLabel) langLabel.textContent = LANG_MAP[S.lang] || "ENG";
         if (langMenu) {
@@ -2776,6 +2998,7 @@
             b.classList.toggle("on", b.dataset.lang === S.lang);
           });
         }
+        applyInterfaceLanguage();
       }
       updateLangUI();
 
@@ -2789,7 +3012,7 @@
           );
         };
         langMenu.querySelectorAll("button").forEach((b) => {
-          b.onclick = (e) => {
+          b.onclick = async (e) => {
             e.stopPropagation();
             const l = b.dataset.lang;
             if (l) {
@@ -2799,6 +3022,9 @@
               updateLangUI();
               langMenu.classList.remove("show");
               langBtn.setAttribute("aria-expanded", "false");
+              renderChat();
+              if (activePage !== "chat") renderActivePage();
+              await ensureRecordTranslations(l);
               if (activePage !== "chat") renderActivePage();
             }
           };
@@ -2812,10 +3038,23 @@
       }
 
       // Back to Chat Button on top-right
-      $("#btn-back-chat").onclick = () => switchPage("chat");
+      $("#btn-back-chat").onclick = () => switchPage($("#btn-back-chat").dataset.target || "chat", { fromBack: true });
 
       // Big Upload Button in Chat Input Bar
       const fileInp = $("#file-inp");
+      const attachmentToggle = $("#attachment-toggle");
+      const attachmentMenu = $("#attachment-menu");
+      const closeAttachmentMenu = () => {
+        attachmentMenu.hidden = true;
+        attachmentToggle.setAttribute("aria-expanded", "false");
+      };
+      attachmentToggle.onclick = (event) => {
+        event.stopPropagation();
+        attachmentMenu.hidden = !attachmentMenu.hidden;
+        attachmentToggle.setAttribute("aria-expanded", String(!attachmentMenu.hidden));
+      };
+      attachmentMenu.onclick = (event) => event.stopPropagation();
+      document.addEventListener("click", closeAttachmentMenu);
       if (fileInp) {
         fileInp.onchange = (e) => {
           const file = e.target.files?.[0];
@@ -2824,9 +3063,10 @@
         };
       }
       $("#rec-up").onclick = () => {
+        closeAttachmentMenu();
         if (fileInp) fileInp.click();
       };
-      $("#rec-take").onclick = () => $("#file-take").click();
+      $("#rec-take").onclick = () => { closeAttachmentMenu(); $("#file-take").click(); };
       $("#file-take").onchange = (event) => {
         const file = event.target.files?.[0]; event.target.value = "";
         if (file) handleFileUpload(file);
@@ -3063,9 +3303,20 @@
       const introStartLabel = $("#intro-start-label");
       const introStatus = $("#intro-status");
       const introSkip = $("#intro-skip");
+      const authScreen = $("#auth-screen");
+      const authForm = $("#auth-form");
+      const authNameRow = $("#auth-name-row");
+      const authName = $("#auth-name");
+      const authEmail = $("#auth-email");
+      const authPassword = $("#auth-password");
+      const authSubmit = $("#auth-submit");
+      const authStatus = $("#auth-status");
       let introClosed = false,
         introRequested = false,
+        authMode = "signin",
+        pendingTour = false,
         introTimer;
+      introSkip.hidden = true;
       introVideo.controls = false;
       introVideo.disablePictureInPicture = true;
       const introVideoMask = $(".intro-video-mask");
@@ -3138,13 +3389,37 @@
           "The introduction could not play. Try again or continue to Mr.Doc.";
         introSkip.textContent = "Continue to Mr.Doc";
       }
-      introStart.addEventListener("click", async () => {
+      function showAuth(startTourAfterIntro = false) {
+        pendingTour = startTourAfterIntro;
+        authScreen.hidden = false;
+        authStatus.textContent = "";
+        authEmail.value = localStorage.getItem("mrdoc_auth_email") || "";
+        setTimeout(() => (authEmail.value ? authPassword : authEmail).focus(), 0);
+      }
+      function setAuthMode(mode) {
+        authMode = mode;
+        const signup = mode === "signup";
+        authNameRow.hidden = !signup;
+        authName.required = signup;
+        authPassword.autocomplete = signup ? "new-password" : "current-password";
+        $("#auth-signin-tab").classList.toggle("on", !signup);
+        $("#auth-signup-tab").classList.toggle("on", signup);
+        $("#auth-signin-tab").setAttribute("aria-selected", String(!signup));
+        $("#auth-signup-tab").setAttribute("aria-selected", String(signup));
+        $("#auth-title").textContent = signup ? "Create your account" : "Welcome back";
+        $("#auth-description").textContent = signup ? "Set up your private Mr.Doc workspace." : "Sign in to continue to your health assistant.";
+        authSubmit.textContent = signup ? "Create account and continue" : "Sign in and continue";
+        authStatus.textContent = "";
+      }
+      async function playIntroVideo() {
         if (introClosed || introStart.disabled) return;
         introRequested = true;
+        authScreen.hidden = true;
         introScreen.classList.remove("has-error");
         introStatus.textContent = "";
         introScreen.classList.add("is-playing");
         introStart.disabled = true;
+        introSkip.hidden = false;
         introSkip.textContent = "Skip intro";
         introSkip.focus();
         introTimer = setTimeout(introFailure, 15000);
@@ -3153,13 +3428,34 @@
         } catch (_) {
           introFailure();
         }
+      }
+      introStart.addEventListener("click", () => showAuth(false));
+      $("#auth-back").onclick = () => { authScreen.hidden = true; };
+      $("#auth-signin-tab").onclick = () => setAuthMode("signin");
+      $("#auth-signup-tab").onclick = () => setAuthMode("signup");
+      authForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!authForm.reportValidity()) return;
+        if (authMode === "signup" && authName.value.trim().length < 2) {
+          authStatus.textContent = "Enter your full name.";
+          authName.focus();
+          return;
+        }
+        localStorage.setItem("mrdoc_auth_email", authEmail.value.trim());
+        localStorage.setItem("mrdoc_auth_seen", "1");
+        if (authMode === "signup" && authName.value.trim()) {
+          S.profile.name = authName.value.trim();
+          save();
+        }
+        authPassword.value = "";
+        await playIntroVideo();
       });
       introVideo.addEventListener("playing", () => clearTimeout(introTimer));
       introVideo.addEventListener("waiting", () => {
         clearTimeout(introTimer);
         introTimer = setTimeout(introFailure, 15000);
       });
-      introVideo.addEventListener("ended", () => closeIntro(false));
+      introVideo.addEventListener("ended", () => closeIntro(pendingTour));
       introVideo.addEventListener("error", introFailure);
       introVideo
         .querySelector("source")
@@ -3168,7 +3464,7 @@
 
       const introTutorialBtn = $("#intro-tutorial-btn");
       if (introTutorialBtn) {
-        introTutorialBtn.onclick = () => closeIntro(true);
+        introTutorialBtn.onclick = () => showAuth(true);
       }
 
       document.body.classList.add("intro-active");
