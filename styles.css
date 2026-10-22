@@ -5492,11 +5492,11 @@ body.stage-3d #stage .bubble { z-index: 5; }
 .full-body-figure { position: relative; display: grid; place-items: center; width: 100%; height: 600px; }
 .full-body-figure > img { display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .2s ease; }
 .full-body-viewport.view-side .full-body-figure > img { width: 76%; }
-.full-body-marker { position: absolute; top: var(--marker-y); z-index: 2; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 3px solid white; border-radius: 50%; background: #d93843; color: white; box-shadow: 0 0 0 7px rgba(217, 56, 67, .19), 0 5px 16px rgba(108, 31, 37, .25); transform: translate(-50%, -50%); cursor: pointer; }
+.full-body-marker { position: absolute; top: var(--marker-y); z-index: 2; display: grid; place-items: center; width: var(--marker-w); height: var(--marker-h); min-width: 34px; min-height: 30px; padding: 0; border: 0; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(235, 35, 46, .78) 0, rgba(235, 35, 46, .57) 31%, rgba(235, 35, 46, .24) 64%, rgba(235, 35, 46, 0) 100%); filter: drop-shadow(0 0 7px rgba(224, 35, 47, .38)); transform: translate(-50%, -50%); cursor: pointer; }
 .view-front .full-body-marker { left: var(--front-x); }
 .view-side .full-body-marker { left: var(--side-x); }
 .view-back .full-body-marker { left: var(--back-x); }
-.full-body-marker span { font-size: 10px; font-weight: 850; }
+.full-body-marker span { display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: #d93843; color: white; box-shadow: 0 2px 7px rgba(70, 20, 25, .24); font-size: 10px; font-weight: 850; }
 .body-marker-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; width: 100%; margin-top: 4px; }
 .body-marker-key button { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 10px 5px 6px; border: 1px solid #f0c6c8; border-radius: 999px; background: #fff; color: #6f3439; font-size: 11px; font-weight: 700; cursor: pointer; }
 .body-marker-key button:hover, .body-marker-key button:focus-visible { border-color: #d93843; background: #fff7f7; }

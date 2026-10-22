@@ -1065,27 +1065,36 @@
 
       function bodyLocation(record) {
         const text = bodySiteText(record);
-        if (/head|face/.test(text)) return { x: 50, y: 10 };
-        if (/neck|shoulder/.test(text)) return { x: 50, y: 23 };
-        if (/chest|heart|lung/.test(text)) return { x: 50, y: 34 };
-        if (/abdomen|stomach|waist/.test(text)) return { x: 50, y: 47 };
-        if (/hip|groin/.test(text)) return { x: 50, y: 57 };
-        if (/hand|finger|wrist/.test(text)) return { x: 50, y: 54 };
-        if (/arm|elbow/.test(text)) return { x: 50, y: 42 };
-        if (/knee/.test(text)) return { x: 50, y: 76 };
-        if (/leg|thigh/.test(text)) return { x: 50, y: 70 };
-        if (/foot|feet|heel|toe|sole|ankle/.test(text)) return { x: 50, y: /sole|plantar/.test(text) ? 96 : 92 };
-        if (/back|spine/.test(text)) return { x: 50, y: 42 };
-        return { x: 50, y: 50 };
+        if (/head|face/.test(text)) return { y: 9, w: 18, h: 12 };
+        if (/neck/.test(text)) return { y: 20, w: 17, h: 10 };
+        if (/shoulder/.test(text)) return { y: 24, w: 21, h: 13 };
+        if (/chest|heart|lung/.test(text)) return { y: 35, w: 27, h: 14 };
+        if (/abdomen|stomach|waist/.test(text)) return { y: 48, w: 23, h: 15 };
+        if (/hip|groin/.test(text)) return { y: 59, w: 24, h: 12 };
+        if (/hand|finger|wrist/.test(text)) return { y: 56, w: 15, h: 12 };
+        if (/elbow/.test(text)) return { y: 43, w: 15, h: 13 };
+        if (/arm/.test(text)) return { y: 39, w: 17, h: 22 };
+        if (/knee/.test(text)) return { y: 77, w: 17, h: 12 };
+        if (/thigh/.test(text)) return { y: 68, w: 18, h: 20 };
+        if (/ankle/.test(text)) return { y: 92, w: 14, h: 9 };
+        if (/foot|feet|heel|toe|sole|plantar/.test(text)) return { y: 96, w: 16, h: 7 };
+        if (/leg|calf|shin/.test(text)) return { y: 85, w: 18, h: 21 };
+        if (/back|spine/.test(text)) return { y: 42, w: 24, h: 26 };
+        return { y: 50, w: 22, h: 16 };
       }
 
       function bodyMarkerX(record, viewIndex = 0.5) {
         const text = bodySiteText(record);
         const view = Math.max(0, Math.min(1, Number(viewIndex)));
-        const laterality = /\bleft\b/.test(text) ? 1 : /\bright\b/.test(text) ? -1 : 0;
+        const laterality = /\bleft\b/.test(text) ? -1 : /\bright\b/.test(text) ? 1 : 0;
         // Patient left/right appears reversed when viewed from the front.
-        const orientation = view < 0.25 ? 1 : view > 0.75 ? -1 : 0;
-        return Math.round(50 + laterality * orientation * 9);
+        const orientation = view < 0.25 ? -1 : view > 0.75 ? 1 : 0;
+        const offset = /hand|finger|wrist/.test(text) ? 29
+          : /arm|elbow/.test(text) ? 25
+          : /shoulder/.test(text) ? 15
+          : /knee|leg|thigh|calf|shin|ankle|foot|feet|heel|toe|sole|plantar/.test(text) ? 11
+          : 0;
+        return Math.round(50 + laterality * orientation * offset);
       }
 
       function anatomyImage(record) {
@@ -1115,7 +1124,7 @@
           const frontX = bodyMarkerX(record, 0);
           const sideX = bodyMarkerX(record, 0.5);
           const backX = bodyMarkerX(record, 1);
-          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)} — open record"><span>${index + 1}</span></button>`;
+          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%;--marker-w:${location.w}%;--marker-h:${location.h}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)} — open record"><span>${index + 1}</span></button>`;
         }).join("");
         const cards = records.map((record) => `<article class="body-finding-card">
           ${anatomyImage(record)}
