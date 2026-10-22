@@ -1081,8 +1081,11 @@
 
       function bodyMarkerX(record, viewIndex = 0.5) {
         const text = bodySiteText(record);
-        const side = /\bleft\b/.test(text) ? 14 : /\bright\b/.test(text) ? 24 : 19;
-        return Math.round(side + Math.max(0, Math.min(1, Number(viewIndex))) * 64);
+        const view = Math.max(0, Math.min(1, Number(viewIndex)));
+        const laterality = /\bleft\b/.test(text) ? 1 : /\bright\b/.test(text) ? -1 : 0;
+        // Patient left/right appears reversed when viewed from the front.
+        const orientation = view < 0.25 ? 1 : view > 0.75 ? -1 : 0;
+        return Math.round(50 + laterality * orientation * 9);
       }
 
       function anatomyImage(record) {
@@ -1109,10 +1112,10 @@
         const records = personalRecords().filter((record) => hasDocumentedBodySite(record) || record.diagnoses?.length || record.injuryDescription);
         const markers = records.filter(hasDocumentedBodySite).map((record, index) => {
           const location = bodyLocation(record);
-          const frontX = bodyMarkerX(record, 0) * 3;
-          const sideX = (bodyMarkerX(record, 0.5) - 33) * 3;
-          const backX = (bodyMarkerX(record, 1) - 66) * 3;
-          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)}"><span>${index + 1}</span></button>`;
+          const frontX = bodyMarkerX(record, 0);
+          const sideX = bodyMarkerX(record, 0.5);
+          const backX = bodyMarkerX(record, 1);
+          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)} — open record"><span>${index + 1}</span></button>`;
         }).join("");
         const cards = records.map((record) => `<article class="body-finding-card">
           ${anatomyImage(record)}
@@ -1120,15 +1123,18 @@
         </article>`).join("");
         el.innerHTML = `<header class="body-check-header"><div><span class="body-check-eyebrow">${esc(tr("myHealth"))}</span><h1>${esc(tr("bodyTitle"))}</h1><p>${esc(tr("bodyIntro"))}</p></div><button class="btn-sm btn-sec" type="button" data-go-health="me">← ${esc(tr("myHealth"))}</button></header>
           <section class="full-body-overview" aria-labelledby="full-body-overview-title">
-            <div class="body-viewer-toolbar"><div><h2 id="full-body-overview-title">${esc(tr("bodyTitle"))}</h2><p>${esc(tr("rotateHint"))}</p></div><div class="body-view-buttons"><button type="button" data-body-view="front" class="on">${esc(tr("front"))}</button><button type="button" data-body-view="side">${esc(tr("side"))}</button><button type="button" data-body-view="back">${esc(tr("back"))}</button></div></div>
-            <div class="full-body-viewport view-front" id="full-body-viewport"><img src="assets/anatomy/full-body.jpg" alt="Front, side and back full body medical reference">${markers}</div>
+            <div class="body-viewer-toolbar"><div><h2 id="full-body-overview-title">${esc(tr("bodyTitle"))}</h2><p>${esc(tr("rotateHint"))}</p></div><div class="body-view-buttons" role="group" aria-label="Choose body view"><button type="button" data-body-view="front" class="on" aria-pressed="true">${esc(tr("front"))}</button><button type="button" data-body-view="side" aria-pressed="false">${esc(tr("side"))}</button><button type="button" data-body-view="back" aria-pressed="false">${esc(tr("back"))}</button></div></div>
+            <div class="full-body-viewport view-front" id="full-body-viewport"><div class="full-body-figure"><img src="assets/anatomy/full-body-front.jpg" alt="Full body front view; numbered markers show health areas recorded in reports">${markers}${markers ? "" : `<p class="body-view-empty">${esc(tr("noBody"))}</p>`}</div>${markers ? `<div class="body-marker-key">${records.filter(hasDocumentedBodySite).map((record, index) => `<button type="button" data-body-record="${esc(record.id)}"><span>${index + 1}</span>${esc(record.bodySite || record.injuryDescription)}</button>`).join("")}</div>` : ""}</div>
             ${records.some((record) => !hasDocumentedBodySite(record)) ? `<p class="systemic-condition-note"><span></span>${esc(tr("wholeBody"))}: ${esc(records.filter((record) => !hasDocumentedBodySite(record)).flatMap((record) => record.diagnoses || []).join(" · ") || tr("locationUnknown"))}</p>` : ""}
           </section>
           <section class="body-findings"><h2>${esc(tr("details"))}</h2>${cards || `<p class="body-empty">${esc(tr("noBody"))}</p>`}</section>`;
         el.querySelectorAll("[data-body-view]").forEach((button) => button.onclick = () => {
-          el.querySelectorAll("[data-body-view]").forEach((item) => item.classList.toggle("on", item === button));
+          el.querySelectorAll("[data-body-view]").forEach((item) => { item.classList.toggle("on", item === button); item.setAttribute("aria-pressed", String(item === button)); });
           const viewport = el.querySelector("#full-body-viewport");
           viewport.className = `full-body-viewport view-${button.dataset.bodyView}`;
+          const viewImage = viewport.querySelector("img");
+          viewImage.src = `assets/anatomy/full-body-${button.dataset.bodyView}.jpg`;
+          viewImage.alt = `Full body ${button.dataset.bodyView} view; numbered markers show health areas recorded in reports`;
         });
         el.querySelectorAll("[data-body-record]").forEach((button) => button.onclick = () => {
           S.curRecord = button.dataset.bodyRecord;
