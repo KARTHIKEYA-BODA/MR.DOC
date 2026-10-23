@@ -3313,17 +3313,130 @@
       // A single introduction occupies the viewport; the landing illustration hides during playback.
       const introScreen = $("#copilot-intro");
       const introVideo = $("#copilot-intro-video");
-      $(".intro-poster-figure img").src = "assets/welcome-doctor.png";
+      const characterFrame = (number) =>
+        `assets/get-started-jump/frame-${String(number).padStart(2, "0")}.webp`;
+      const jumpPoses = [1, 4, 8, 1].map((number, index) => ({
+        progress: [0, 0.18, 0.4, 0.76][index],
+        src: characterFrame(number),
+      }));
+      const characterArt = jumpPoses[0].src;
+      const landedCharacterArt = jumpPoses[jumpPoses.length - 1].src;
+      const posterCharacterImage = $(".intro-poster-figure img");
+      const authCharacterImage = $(".auth-character img");
+      posterCharacterImage.src = characterArt;
+      authCharacterImage.src = landedCharacterArt;
       const introStart = $("#start-intro");
       const introStartLabel = $("#intro-start-label");
       const introStatus = $("#intro-status");
       const introSkip = $("#intro-skip");
       const authScreen = $("#auth-screen");
+      // Keep one character pose visible during the whole travel to prevent frame popping.
+      const travelDoctor = document.createElement("div");
+      travelDoctor.className = "doctor-traveler";
+      travelDoctor.setAttribute("aria-hidden", "true");
+      travelDoctor.innerHTML = '<img src="" alt="">';
+      document.body.appendChild(travelDoctor);
+      const travelImage = travelDoctor.querySelector("img");
+      let jumpFrameRequest = 0;
+      let travelTimer;
+      function travelCharacter(fromElement, toElement, done, options = {}) {
+        if (!fromElement || !toElement) { done?.(); return; }
+        clearTimeout(travelTimer);
+        const from = fromElement.getBoundingClientRect();
+        const to = toElement.getBoundingClientRect();
+        if (!from.width || !to.width) { done?.(); return; }
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const finishTravel = (keepCharacter = false) => {
+          fromElement.style.opacity = "";
+          toElement.style.opacity = keepCharacter ? "0" : "";
+          done?.();
+        };
+        travelDoctor.getAnimations().forEach((animation) => animation.cancel());
+        cancelAnimationFrame(jumpFrameRequest);
+        const sourceImage = fromElement.querySelector("img");
+        travelImage.src = sourceImage?.currentSrc || sourceImage?.src || characterArt;
+        if (options.jumpSequence) travelImage.src = characterArt;
+        travelDoctor.style.left = `${to.left}px`;
+        travelDoctor.style.top = `${to.top}px`;
+        travelDoctor.style.width = `${to.width}px`;
+        travelDoctor.style.height = `${to.height}px`;
+        travelDoctor.style.display = "block";
+        travelDoctor.classList.add("is-traveling", "is-moving");
+        fromElement.style.opacity = "0";
+        toElement.style.opacity = "0";
+
+        if (reduced) {
+          travelDoctor.classList.remove("is-moving");
+          if (options.jumpSequence) travelImage.src = landedCharacterArt;
+          if (!options.persist) travelDoctor.style.display = "none";
+          finishTravel(Boolean(options.persist));
+          return;
+        }
+
+        const dx = from.left - to.left;
+        const dy = from.top - to.top;
+        const sx = from.width / to.width;
+        const sy = from.height / to.height;
+        const duration = options.jumpSequence ? 1000 : 1040;
+        if (options.jumpSequence) {
+          let startedAt = 0;
+          let currentPose = 0;
+          const advanceJumpPose = (now) => {
+            if (!startedAt) startedAt = now;
+            const progress = Math.min(1, (now - startedAt) / duration);
+            let poseIndex = 0;
+            for (let index = 1; index < jumpPoses.length; index += 1) {
+              if (progress >= jumpPoses[index].progress) poseIndex = index;
+            }
+            if (poseIndex !== currentPose) {
+              travelImage.src = jumpPoses[poseIndex].src;
+              currentPose = poseIndex;
+            }
+            if (progress < 1) jumpFrameRequest = requestAnimationFrame(advanceJumpPose);
+          };
+          jumpFrameRequest = requestAnimationFrame(advanceJumpPose);
+        }
+        const motion = travelDoctor.animate([
+          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)`, offset: 0 },
+          { transform: `translate(${dx * .72}px, ${dy * .72 - 16}px) scale(${sx}, ${sy})`, offset: .2 },
+          { transform: `translate(${dx * .44}px, ${dy * .44 - 112}px) scale(${sx}, ${sy})`, offset: .52 },
+          { transform: `translate(${dx * .16}px, ${dy * .16 - 34}px) scale(${sx}, ${sy})`, offset: .78 },
+          { transform: "translate(0, 6px) scale(1.015, .985)", offset: .93 },
+          { transform: "translate(0, 0) scale(1, 1)", offset: 1 },
+        ], {
+          duration,
+          easing: "cubic-bezier(.2,.7,.2,1)",
+          fill: "forwards",
+        });
+        motion.onfinish = () => {
+          cancelAnimationFrame(jumpFrameRequest);
+          if (options.jumpSequence) travelImage.src = landedCharacterArt;
+          travelDoctor.classList.remove("is-moving");
+          travelDoctor.style.transform = "";
+          if (!options.persist) {
+            travelDoctor.classList.remove("is-traveling");
+            travelDoctor.style.display = "none";
+          }
+          finishTravel(Boolean(options.persist));
+        };
+      }
+      function clearCharacterTraveler() {
+        travelDoctor.getAnimations().forEach((animation) => animation.cancel());
+        cancelAnimationFrame(jumpFrameRequest);
+        travelDoctor.classList.remove("is-traveling", "is-moving");
+        travelDoctor.style.display = "none";
+        travelDoctor.style.transform = "";
+        $(".auth-character").style.opacity = "";
+        $(".intro-poster-figure").style.opacity = "";
+      }
       const authForm = $("#auth-form");
       const authNameRow = $("#auth-name-row");
       const authName = $("#auth-name");
+      const authGoogleRow = $("#auth-google-row");
+      const authGoogleButton = $("#auth-google");
       const authEmail = $("#auth-email");
       const authPassword = $("#auth-password");
+      const authPasswordToggle = $("#auth-password-toggle");
       const authSubmit = $("#auth-submit");
       const authStatus = $("#auth-status");
       let introClosed = false,
@@ -3407,6 +3520,20 @@
       function showAuth(startTourAfterIntro = false) {
         pendingTour = startTourAfterIntro;
         authScreen.hidden = false;
+        introScreen.classList.add("auth-transitioning");
+        authScreen.classList.remove("is-entering");
+        void authScreen.offsetWidth;
+        authScreen.classList.add("is-entering");
+        setTimeout(() => {
+          introScreen.classList.remove("auth-transitioning");
+          authScreen.classList.remove("is-entering");
+        }, 820);
+        travelCharacter(
+          $(".intro-poster-figure"),
+          $(".auth-character"),
+          undefined,
+          { persist: true, jumpSequence: true },
+        );
         authStatus.textContent = "";
         authEmail.value = localStorage.getItem("mrdoc_auth_email") || "";
         setTimeout(() => (authEmail.value ? authPassword : authEmail).focus(), 0);
@@ -3416,6 +3543,7 @@
         const signup = mode === "signup";
         authNameRow.hidden = !signup;
         authName.required = signup;
+        authGoogleRow.hidden = !signup;
         authPassword.autocomplete = signup ? "new-password" : "current-password";
         $("#auth-signin-tab").classList.toggle("on", !signup);
         $("#auth-signup-tab").classList.toggle("on", signup);
@@ -3425,10 +3553,26 @@
         $("#auth-description").textContent = signup ? "Set up your private Mr.Doc workspace." : "Sign in to continue to your health assistant.";
         authSubmit.textContent = signup ? "Create account and continue" : "Sign in and continue";
         authStatus.textContent = "";
+        authStatus.classList.remove("is-info");
       }
+      authPasswordToggle.addEventListener("click", () => {
+        const showPassword = authPassword.type === "password";
+        authPassword.type = showPassword ? "text" : "password";
+        authPasswordToggle.setAttribute("aria-pressed", String(showPassword));
+        authPasswordToggle.setAttribute(
+          "aria-label",
+          showPassword ? "Hide password" : "Show password",
+        );
+      });
+      authGoogleButton.addEventListener("click", () => {
+        authStatus.classList.add("is-info");
+        authStatus.textContent =
+          "Google sign-in needs OAuth setup before it can create or access an account.";
+      });
       async function playIntroVideo() {
         if (introClosed || introStart.disabled) return;
         introRequested = true;
+        clearCharacterTraveler();
         authScreen.hidden = true;
         introScreen.classList.remove("has-error");
         introStatus.textContent = "";
@@ -3445,20 +3589,29 @@
         }
       }
       introStart.addEventListener("click", () => showAuth(false));
-      $("#auth-back").onclick = () => { authScreen.hidden = true; };
+      $("#auth-back").onclick = () => {
+        const character = $(".auth-character");
+        introScreen.classList.remove("auth-transitioning");
+        authScreen.classList.remove("is-entering");
+        travelCharacter(character, $(".intro-poster-figure"), () => {
+          authScreen.hidden = true;
+        });
+        if (character) character.classList.remove("arriving");
+      };
       $("#auth-signin-tab").onclick = () => setAuthMode("signin");
       $("#auth-signup-tab").onclick = () => setAuthMode("signup");
       authForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!authForm.reportValidity()) return;
-        if (authMode === "signup" && authName.value.trim().length < 2) {
-          authStatus.textContent = "Enter your full name.";
+        if (authMode === "signup" && authName.value.trim().length < 3) {
+          authStatus.textContent = "Choose a username with at least 3 characters.";
           authName.focus();
           return;
         }
         localStorage.setItem("mrdoc_auth_email", authEmail.value.trim());
         localStorage.setItem("mrdoc_auth_seen", "1");
         if (authMode === "signup" && authName.value.trim()) {
+          localStorage.setItem("mrdoc_auth_username", authName.value.trim());
           S.profile.name = authName.value.trim();
           save();
         }

@@ -835,7 +835,14 @@ class Handler(SimpleHTTPRequestHandler):
             query = urlsplit(self.path).query
             self.path = f"/{APP_PAGE}" + (f"?{query}" if query else "")
             path = f"/{APP_PAGE}"
-        public_file = path in (f"/{APP_PAGE}", "/styles.css", "/app.js", "/health-data.js", "/mrdoc3d.js")
+        public_file = path in (
+            f"/{APP_PAGE}",
+            "/styles.css",
+            "/app.js",
+            "/health-data.js",
+            "/mrdoc3d.js",
+            "/mrdoc-transition3d.js",
+        )
         public_asset = (path == "/assets/voice-orb.html" or
                         (path.startswith("/assets/vendor/") and Path(path).suffix.lower() in
                          (".js", ".mjs")) or

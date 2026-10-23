@@ -17,7 +17,7 @@
       as="image"
       href="assets/b_b_down.png"
     />
-    <link rel="stylesheet" href="styles.css?v=illustrated-20261022" />
+    <link rel="stylesheet" href="styles.css?v=card-flip-20261023" />
   </head>
   <body class="intro-active">
     <!-- Welcome screen; the animated introduction starts only after the visitor clicks. -->
@@ -107,6 +107,7 @@
       ></p>
       <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
         <button class="auth-back" id="auth-back" type="button" aria-label="Return to welcome page">← Back</button>
+        <div class="auth-character" aria-hidden="true"><img src="assets/get-started-jump/frame-01.webp" alt=""></div>
         <div class="auth-card">
           <div class="auth-brand"><span>+</span><b>Mr.Doc</b></div>
           <p class="auth-kicker">Your private health workspace</p>
@@ -117,11 +118,15 @@
             <button id="auth-signup-tab" type="button" role="tab" aria-selected="false">Create account</button>
           </div>
           <form id="auth-form">
-            <label id="auth-name-row" hidden>Full name<input id="auth-name" type="text" autocomplete="name" maxlength="80" /></label>
+            <label id="auth-name-row" hidden>Username<input id="auth-name" type="text" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9._-]{3,24}" title="Use 3–24 letters, numbers, dots, underscores, or hyphens." /></label>
             <label>Email address<input id="auth-email" type="email" autocomplete="email" required /></label>
-            <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="6" required /></label>
+            <label>Password<div class="password-field"><input id="auth-password" type="password" autocomplete="current-password" minlength="6" required /><button id="auth-password-toggle" class="password-visibility-toggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.7"/><path class="password-eye-slash" d="m4 4 16 16"/></svg></button></div></label>
             <button class="auth-submit" id="auth-submit" type="submit">Sign in and continue</button>
           </form>
+          <div class="auth-google-row" id="auth-google-row" hidden>
+            <div class="auth-divider"><span>or</span></div>
+            <button class="auth-google-btn" id="auth-google" type="button"><span class="google-g" aria-hidden="true">G</span>Continue with Google</button>
+          </div>
           <p class="auth-note">Prototype sign in: details stay on this browser and are not sent to an account service.</p>
           <p id="auth-status" class="auth-status" role="status"></p>
         </div>
@@ -423,7 +428,7 @@
 
 
     <script src="health-data.js"></script>
-    <script src="app.js?v=illustrated-20261022"></script>
+    <script src="app.js?v=card-flip-20261023"></script>
     <script>
       // Keep the illustrated stage as the default. Add ?preview3d=1 when
       // explicitly reviewing the GLB character through a local server.
