@@ -427,12 +427,13 @@
         return value;
       }
       let statusTimer;
-      function notify(message, error = false) {
+      function notify(message, error = false, options = {}) {
         const box = $("#app-status");
         if (!box) return;
         clearTimeout(statusTimer);
         $("#status-text").textContent = message;
         box.classList.toggle("error", error);
+        box.classList.toggle("chat-error", Boolean(options.prominent));
         box.hidden = false;
         if (!error)
           statusTimer = setTimeout(() => {
@@ -2919,7 +2920,7 @@
         } catch (error) {
           if (!request.controller.signal.aborted && pendingChat === request) {
             $("#inp").value = text;
-            notify(error.message + " Your message is ready to retry.", true);
+            notify(error.message + " Your message is ready to retry.", true, { prominent: true });
           }
         } finally {
           if (pendingChat === request) {
@@ -3315,6 +3316,11 @@
       const introVideo = $("#copilot-intro-video");
       const characterFrame = (number) =>
         `assets/get-started-jump/frame-${String(number).padStart(2, "0")}.webp`;
+      const authCharacterPoses = {
+        idle: "assets/auth-character/idle.png",
+        email: "assets/auth-character/email-focus.png",
+        password: "assets/auth-character/password-focus.png",
+      };
       const jumpPoses = [1, 4, 8, 1].map((number, index) => ({
         progress: [0, 0.18, 0.4, 0.76][index],
         src: characterFrame(number),
@@ -3324,7 +3330,7 @@
       const posterCharacterImage = $(".intro-poster-figure img");
       const authCharacterImage = $(".auth-character img");
       posterCharacterImage.src = characterArt;
-      authCharacterImage.src = landedCharacterArt;
+      authCharacterImage.src = authCharacterPoses.idle;
       const introStart = $("#start-intro");
       const introStartLabel = $("#intro-start-label");
       const introStatus = $("#intro-status");
@@ -3377,7 +3383,7 @@
         const dy = from.top - to.top;
         const sx = from.width / to.width;
         const sy = from.height / to.height;
-        const duration = options.jumpSequence ? 1000 : 1040;
+        const duration = options.returning ? 680 : options.jumpSequence ? 1000 : 1040;
         if (options.jumpSequence) {
           let startedAt = 0;
           let currentPose = 0;
@@ -3396,16 +3402,25 @@
           };
           jumpFrameRequest = requestAnimationFrame(advanceJumpPose);
         }
-        const motion = travelDoctor.animate([
-          { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)`, offset: 0 },
-          { transform: `translate(${dx * .72}px, ${dy * .72 - 16}px) scale(${sx}, ${sy})`, offset: .2 },
-          { transform: `translate(${dx * .44}px, ${dy * .44 - 112}px) scale(${sx}, ${sy})`, offset: .52 },
-          { transform: `translate(${dx * .16}px, ${dy * .16 - 34}px) scale(${sx}, ${sy})`, offset: .78 },
-          { transform: "translate(0, 6px) scale(1.015, .985)", offset: .93 },
-          { transform: "translate(0, 0) scale(1, 1)", offset: 1 },
-        ], {
+        const returnScaleX = sx + (1 - sx) * 0.52;
+        const returnScaleY = sy + (1 - sy) * 0.52;
+        const travelKeyframes = options.returning
+          ? [
+              { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, offset: 0 },
+              { transform: `translate(${dx * .52}px, ${dy * .52}px) scale(${returnScaleX}, ${returnScaleY})`, offset: .52 },
+              { transform: "translate(0, 0) scale(1, 1)", offset: 1 },
+            ]
+          : [
+              { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(0deg)`, offset: 0 },
+              { transform: `translate(${dx * .72}px, ${dy * .72 - 16}px) scale(${sx}, ${sy})`, offset: .2 },
+              { transform: `translate(${dx * .44}px, ${dy * .44 - 112}px) scale(${sx}, ${sy})`, offset: .52 },
+              { transform: `translate(${dx * .16}px, ${dy * .16 - 34}px) scale(${sx}, ${sy})`, offset: .78 },
+              { transform: "translate(0, 6px) scale(1.015, .985)", offset: .93 },
+              { transform: "translate(0, 0) scale(1, 1)", offset: 1 },
+            ];
+        const motion = travelDoctor.animate(travelKeyframes, {
           duration,
-          easing: "cubic-bezier(.2,.7,.2,1)",
+          easing: options.returning ? "cubic-bezier(.22,.7,.2,1)" : "cubic-bezier(.2,.7,.2,1)",
           fill: "forwards",
         });
         motion.onfinish = () => {
@@ -3439,10 +3454,42 @@
       const authPasswordToggle = $("#auth-password-toggle");
       const authSubmit = $("#auth-submit");
       const authStatus = $("#auth-status");
+      let authTypingTimer;
+      function setAuthCharacterPose(pose) {
+        const src = authCharacterPoses[pose] || authCharacterPoses.idle;
+        authCharacterImage.src = src;
+        // During the landing transition the visible figure is the persistent travel copy.
+        if (travelDoctor.style.display !== "none" && travelDoctor.classList.contains("is-traveling")) {
+          travelImage.src = src;
+        }
+      }
+      function resetAuthCharacterPose() {
+        clearTimeout(authTypingTimer);
+        setAuthCharacterPose("idle");
+      }
+      authForm.addEventListener("focusin", (event) => {
+        if ([authName, authEmail, authPassword].includes(event.target)) resetAuthCharacterPose();
+      });
+      authForm.addEventListener("input", (event) => {
+        const field = event.target;
+        if (field === authPassword) setAuthCharacterPose("password");
+        else if (field === authEmail || field === authName) setAuthCharacterPose("email");
+        else return;
+        clearTimeout(authTypingTimer);
+        authTypingTimer = setTimeout(resetAuthCharacterPose, 800);
+      });
+      authForm.addEventListener("focusout", () => {
+        requestAnimationFrame(() => {
+          const focusedField = [authName, authEmail, authPassword].includes(document.activeElement);
+          if (!focusedField) resetAuthCharacterPose();
+        });
+      });
       let introClosed = false,
         introRequested = false,
         authMode = "signin",
         pendingTour = false,
+        authAfterTutorial = false,
+        authHomeAfterSubmit = false,
         introTimer;
       introSkip.hidden = true;
       introVideo.controls = false;
@@ -3485,7 +3532,7 @@
         document.body.classList.add("intro-revealing");
         introScreen.classList.add("is-leaving");
         setTimeout(() => {
-          introScreen.remove();
+          introScreen.hidden = true;
           document.body.classList.remove("intro-revealing");
           setTimeout(() => {
             if (startTourNow) {
@@ -3520,20 +3567,25 @@
       function showAuth(startTourAfterIntro = false) {
         pendingTour = startTourAfterIntro;
         authScreen.hidden = false;
-        introScreen.classList.add("auth-transitioning");
+        const welcomeIsVisible = introScreen.isConnected && !introScreen.hidden;
+        if (welcomeIsVisible) introScreen.classList.add("auth-transitioning");
         authScreen.classList.remove("is-entering");
         void authScreen.offsetWidth;
         authScreen.classList.add("is-entering");
         setTimeout(() => {
-          introScreen.classList.remove("auth-transitioning");
+          if (welcomeIsVisible) introScreen.classList.remove("auth-transitioning");
           authScreen.classList.remove("is-entering");
         }, 820);
-        travelCharacter(
-          $(".intro-poster-figure"),
-          $(".auth-character"),
-          undefined,
-          { persist: true, jumpSequence: true },
-        );
+        if (welcomeIsVisible) {
+          travelCharacter(
+            $(".intro-poster-figure"),
+            $(".auth-character"),
+            undefined,
+            { persist: true, jumpSequence: true },
+          );
+        } else {
+          clearCharacterTraveler();
+        }
         authStatus.textContent = "";
         authEmail.value = localStorage.getItem("mrdoc_auth_email") || "";
         setTimeout(() => (authEmail.value ? authPassword : authEmail).focus(), 0);
@@ -3590,13 +3642,44 @@
       }
       introStart.addEventListener("click", () => showAuth(false));
       $("#auth-back").onclick = () => {
-        const character = $(".auth-character");
-        introScreen.classList.remove("auth-transitioning");
-        authScreen.classList.remove("is-entering");
-        travelCharacter(character, $(".intro-poster-figure"), () => {
+        const returnToWelcome = introScreen.isConnected &&
+          (!introScreen.hidden || authAfterTutorial);
+        if (!returnToWelcome) {
+          clearCharacterTraveler();
+          authScreen.classList.remove("is-entering", "is-returning");
           authScreen.hidden = true;
-        });
-        if (character) character.classList.remove("arriving");
+          authHomeAfterSubmit = false;
+          return;
+        }
+
+        const returningFromTour = authAfterTutorial;
+        authAfterTutorial = false;
+        authHomeAfterSubmit = false;
+        clearTimeout(introTimer);
+        introVideo.pause();
+        if (returningFromTour) {
+          introScreen.hidden = false;
+          introClosed = false;
+          introRequested = false;
+          try { introVideo.currentTime = 0; } catch (_) {}
+          document.body.classList.add("intro-active");
+          document.body.classList.remove("intro-revealing");
+        }
+        introScreen.classList.remove("auth-transitioning", "is-playing", "has-error", "is-leaving");
+        introStart.disabled = false;
+        introSkip.hidden = true;
+        introStatus.textContent = "";
+        authScreen.classList.remove("is-entering");
+        authScreen.classList.add("is-returning");
+        travelCharacter(
+          $(".auth-character"),
+          $(".intro-poster-figure"),
+          () => {
+            authScreen.hidden = true;
+            authScreen.classList.remove("is-returning");
+          },
+          { returning: true },
+        );
       };
       $("#auth-signin-tab").onclick = () => setAuthMode("signin");
       $("#auth-signup-tab").onclick = () => setAuthMode("signup");
@@ -3616,6 +3699,15 @@
           save();
         }
         authPassword.value = "";
+        if (authAfterTutorial || authHomeAfterSubmit) {
+          authAfterTutorial = false;
+          authHomeAfterSubmit = false;
+          authScreen.hidden = true;
+          clearCharacterTraveler();
+          document.body.classList.remove("intro-active", "intro-revealing");
+          $("#inp").focus({ preventScroll: true });
+          return;
+        }
         await playIntroVideo();
       });
       introVideo.addEventListener("playing", () => clearTimeout(introTimer));
@@ -3632,7 +3724,29 @@
 
       const introTutorialBtn = $("#intro-tutorial-btn");
       if (introTutorialBtn) {
-        introTutorialBtn.onclick = () => showAuth(true);
+        introTutorialBtn.onclick = () => {
+          authAfterTutorial = true;
+          authHomeAfterSubmit = true;
+          closeIntro(true);
+        };
+      }
+
+      const signOutButton = $("#drawer-signout-btn");
+      if (signOutButton) {
+        signOutButton.onclick = () => {
+          const confirmed = window.confirm(
+            "Would you like to sign out and return to the sign-in screen? Your chats and profile will stay saved on this device.",
+          );
+          if (!confirmed) return;
+          openDrawer(false);
+          stopSpeech();
+          cancelPendingChat();
+          authAfterTutorial = false;
+          authHomeAfterSubmit = true;
+          authPassword.value = "";
+          setAuthMode("signin");
+          showAuth(false);
+        };
       }
 
       document.body.classList.add("intro-active");
@@ -3664,10 +3778,10 @@
             text: "Ask about symptoms, medicines or your reports here. Replies come in your language and can be read aloud.",
           },
           {
-            sel: "#chips",
+            sel: "#chips button:first-child",
             place: "bottom",
             title: "Quick questions",
-            text: "Not sure what to ask? Tap one of these suggestions to get started.",
+            text: "When a new chat has suggestions, choose one here to send it. This step is skipped when there are none.",
           },
           {
             sel: "#rec-up",
@@ -4039,6 +4153,10 @@
           if (activePage !== "chat") switchPage("chat");
           else if (drawerOpen()) openDrawer(false);
           const inp = document.getElementById("inp");
+          if (authAfterTutorial) {
+            showAuth(false);
+            return;
+          }
           if (inp) inp.focus();
         }
 
