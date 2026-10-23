@@ -804,6 +804,8 @@
           element.classList.add("has-record");
           element.append(recordCard(record));
         }
+        element.classList.add("motion-reveal");
+        element.style.setProperty("--motion-index", document.querySelectorAll("#msgs .m").length);
         $("#msgs").appendChild(element);
         $("#msgs").scrollTop = $("#msgs").scrollHeight;
         return element;
@@ -844,8 +846,44 @@
             ch.appendChild(b);
           });
         }
+        revealMotion(ch, "button");
+        revealMotion($("#msgs"), ".m, .chat-empty-state");
         applyInterfaceLanguage();
       }
+
+      function revealMotion(container, selector) {
+        if (!container || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        container.querySelectorAll(selector).forEach((element, index) => {
+          element.style.setProperty("--motion-index", Math.min(index, 8));
+          element.classList.add("motion-reveal");
+        });
+      }
+
+      const pageRevealSelector = [
+        ".page-title", ".page-desc", ".dropzone", ".rec-card", ".record-library",
+        ".clinical-timeline-header", ".lab-trend-card", ".timeline-segmented-bar",
+        ".clinical-timeline-item", ".health-record-summary", ".health-item-card",
+        ".doctor-visit-summary", ".health-reminders-section", ".card-box",
+        ".profile-card", ".body-finding-card", ".guide-topic-card",
+      ].join(",");
+
+      function syncTimelinePill() {
+        const bar = document.querySelector(".timeline-segmented-bar");
+        if (!bar) return;
+        const active = bar.querySelector(".timeline-segment.active");
+        if (!active) return;
+        let pill = bar.querySelector(".timeline-segment-pill");
+        if (!pill) {
+          pill = document.createElement("span");
+          pill.className = "timeline-segment-pill";
+          pill.setAttribute("aria-hidden", "true");
+          bar.prepend(pill);
+        }
+        pill.style.width = `${active.offsetWidth}px`;
+        pill.style.height = `${active.offsetHeight}px`;
+        pill.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+      }
+      window.addEventListener("resize", syncTimelinePill, { passive: true });
 
       // ---------------------------------------------------------------------------
       // Page Switching & Drawer Controls
@@ -858,6 +896,9 @@
         $("#app-main").inert = open;
         $(".top-bar").inert = open;
         if (open) {
+          document.querySelectorAll(".drawer .nav-item").forEach((item) => {
+            if (!item.title) item.title = item.textContent.trim().replace(/\s+/g, " ");
+          });
           renderDrawerChats();
           $("#drawer-close").focus();
         } else if ($("#drawer").contains(document.activeElement))
@@ -890,6 +931,11 @@
           back.dataset.target = returnPage === "me" ? "me" : "chat";
           back.textContent = `← ${tr(returnPage === "me" ? "backHealth" : "backChat")}`;
           renderActivePage();
+          requestAnimationFrame(() => {
+            const view = $(`#view-${page}`);
+            revealMotion(view, pageRevealSelector);
+            if (page === "timeline") syncTimelinePill();
+          });
         }
 
         // Update active state in drawer nav
@@ -1722,15 +1768,29 @@
 
       function renderLabTrendComparisons(records) {
         const groups = buildLabTrendGroups(records);
-        const cards = groups.map((group) => `
+        const cards = groups.map((group) => {
+          const values = group.points.map((point) => point.numericValue);
+          const low = Math.min(...values);
+          const high = Math.max(...values);
+          const spread = high - low || Math.max(Math.abs(high) * 0.08, 1);
+          const coords = values.map((value, index) => ({
+            x: values.length === 1 ? 50 : 4 + (index / (values.length - 1)) * 92,
+            y: 27 - ((value - low) / spread) * 21,
+          }));
+          const linePoints = coords.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+          const lastPoint = coords[coords.length - 1];
+          const areaPath = `M ${coords[0].x.toFixed(1)} 32 L ${coords.map((point) => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" L ")} L ${lastPoint.x.toFixed(1)} 32 Z`;
+          const dots = coords.map((point, index) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="2.1"><title>${esc(group.points[index].date)}: ${esc(group.points[index].value)} ${esc(group.unit)} · ${group.points[index].status === "UNKNOWN" ? "flag not stated" : esc(group.points[index].status)}</title></circle>`).join("");
+          return `
           <article class="lab-trend-card">
-            <header><h3>${esc(group.label)}</h3><span>Recorded unit: ${esc(group.unit)}</span></header>
+            <header><div><h3>${esc(group.label)}</h3><span>Recorded unit: ${esc(group.unit)}</span></div><svg class="lab-trend-sparkline" viewBox="0 0 100 34" role="img" aria-label="Trend for ${esc(group.label)}; exact results are listed below"><path class="lab-sparkline-fill" d="${areaPath}"></path><polyline class="lab-sparkline-line" points="${linePoints}"></polyline>${dots}</svg></header>
             <div class="lab-trend-table-wrap"><table class="lab-trend-table">
               <thead><tr><th>Date</th><th>Recorded result</th><th>Report</th><th>Recorded flag</th></tr></thead>
               <tbody>${group.points.map((point) => `<tr><td>${esc(point.date)}</td><td><b>${esc(point.value)} ${esc(group.unit)}</b></td><td>${esc(point.title)}</td><td>${point.status === "UNKNOWN" ? "Not stated" : esc(point.status)}</td></tr>`).join("")}</tbody>
             </table></div>
           </article>
-        `).join("");
+        `;
+        }).join("");
         return `<section class="lab-trend-section" aria-labelledby="lab-trend-heading">
           <div class="lab-trend-heading"><div><h2 id="lab-trend-heading">Lab history</h2></div></div>
           ${cards || `<p class="lab-trend-empty">Upload another dated report to see matching results together.</p>`}
@@ -1900,6 +1960,10 @@
               open();
             }
           };
+        });
+        requestAnimationFrame(() => {
+          revealMotion(el, ".clinical-timeline-header, .lab-trend-card, .timeline-segmented-bar, .clinical-timeline-item, .clinical-empty-state");
+          syncTimelinePill();
         });
       }
 

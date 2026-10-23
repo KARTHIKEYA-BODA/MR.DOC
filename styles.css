@@ -5626,4 +5626,68 @@ body.stage-3d #stage .bubble { z-index: 5; }
   .chips-top { flex-wrap: nowrap; overflow: visible; }
   .chips-top button { white-space: normal; }
 }
+
+/* Calm, shared motion for navigation and health data. Clinical values stay static. */
+:root {
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --motion-duration: 360ms;
+}
+.page-view.active { animation: motion-page-in 240ms var(--motion-ease) both; }
+@keyframes motion-page-in {
+  from { opacity: .72; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.motion-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(3px);
+  animation: motion-rise var(--motion-duration) var(--motion-ease) both;
+  animation-delay: calc(var(--motion-index, 0) * 38ms);
+}
+@keyframes motion-rise {
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.timeline-segmented-bar { position: relative; isolation: isolate; }
+.timeline-segment-pill {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  border-radius: 6px;
+  background: #1769aa;
+  box-shadow: 0 2px 7px rgba(23, 105, 170, .2);
+  pointer-events: none;
+  transition: width 300ms var(--motion-ease), height 300ms var(--motion-ease), transform 300ms var(--motion-ease);
+}
+.timeline-segment { position: relative; z-index: 1; transition: color 180ms ease, background-color 180ms ease; }
+.timeline-segment.active { background: transparent; color: #fff; box-shadow: none; }
+.lab-trend-card { transition: transform 240ms var(--motion-ease), box-shadow 240ms ease; }
+.lab-trend-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(20, 49, 67, .09); }
+.lab-trend-card header > div { min-width: 0; }
+.lab-trend-sparkline { display: block; flex: 0 0 116px; width: 116px; height: 40px; overflow: visible; }
+.lab-sparkline-fill { fill: rgba(37, 126, 175, .12); opacity: 0; animation: spark-fill 420ms 180ms ease both; }
+.lab-sparkline-line { fill: none; stroke: #247db9; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 140; stroke-dashoffset: 140; animation: spark-draw 650ms var(--motion-ease) 80ms forwards; }
+.lab-trend-sparkline circle { fill: #fff; stroke: #247db9; stroke-width: 1.8; }
+@keyframes spark-draw { to { stroke-dashoffset: 0; } }
+@keyframes spark-fill { to { opacity: 1; } }
+.chips-top button { transition: transform 220ms var(--motion-ease), box-shadow 220ms ease, background-color 180ms ease; }
+.chips-top button:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20, 49, 67, .08); }
+.lang-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px) scale(.98);
+  transform-origin: top right;
+  transition: opacity 180ms ease, transform 180ms var(--motion-ease), visibility 180ms;
+}
+.lang-dropdown-menu.show { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+.lang-dropdown-menu button { transition: background-color 160ms ease, color 160ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .motion-reveal { opacity: 1; transform: none; filter: none; }
+  .lab-sparkline-fill { opacity: 1; }
+  .lab-sparkline-line { stroke-dashoffset: 0; }
+  .lab-trend-card:hover, .chips-top button:hover { transform: none; }
+}
 @media (prefers-reduced-motion: reduce) { .auth-character.arriving { animation: none; } }
