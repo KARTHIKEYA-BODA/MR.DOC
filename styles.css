@@ -5631,7 +5631,26 @@ body.stage-3d #stage .bubble { z-index: 5; }
 :root {
   --motion-ease: cubic-bezier(.22, 1, .36, 1);
   --motion-duration: 360ms;
+  --motion-press: 100ms;
+  --focus-ring: 0 0 0 3px rgba(36, 125, 185, .28);
 }
+body { font-optical-sizing: auto; }
+button:not(:disabled), [role="button"], .timeline-segment { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active, .timeline-segment:active, [role="button"]:active {
+  scale: .985;
+  transition-duration: var(--motion-press);
+}
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible,
+input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.drawer { transition: transform 340ms var(--motion-ease), box-shadow 340ms ease; }
+.drawer.open { transition: transform 340ms var(--motion-ease), box-shadow 340ms ease; }
+.drawer > *, .drawer.open > * { transition-duration: 190ms; transition-delay: 0ms !important; }
+.drawer .drawer-nav .nav-item, .drawer.open .drawer-nav .nav-item { transition-duration: 180ms; transition-delay: 0ms !important; }
+.drawer-backdrop { transition: opacity 220ms ease, backdrop-filter 220ms ease, -webkit-backdrop-filter 220ms ease; }
+.auth-tabs button, .lang-dropdown-btn, .btn-back-chat { transition-timing-function: var(--motion-ease); }
 .page-view.active { animation: motion-page-in 240ms var(--motion-ease) both; }
 @keyframes motion-page-in {
   from { opacity: .72; transform: translateY(5px); }
@@ -5685,9 +5704,26 @@ body.stage-3d #stage .bubble { z-index: 5; }
 .lang-dropdown-menu button { transition: background-color 160ms ease, color 160ms ease; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
-  .motion-reveal { opacity: 1; transform: none; filter: none; }
+  .page-view.active { animation: motion-fade 120ms ease both; transform: none; }
+  .motion-reveal { animation: motion-fade 120ms ease both; transform: none; filter: none; }
   .lab-sparkline-fill { opacity: 1; }
   .lab-sparkline-line { stroke-dashoffset: 0; }
   .lab-trend-card:hover, .chips-top button:hover { transform: none; }
+  .drawer, .drawer.open { transition: none; }
+  button:not(:disabled):active, .timeline-segment:active, [role="button"]:active { scale: 1; }
+}
+@keyframes motion-fade { from { opacity: .65; } to { opacity: 1; } }
+@media (prefers-reduced-transparency: reduce) {
+  .drawer-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .lang-dropdown-menu, .auth-card, .drawer { background-color: #fff; }
+}
+@media (prefers-contrast: more) {
+  :root { --line: #8a9aa4; --mut: #4a5b66; }
+  button:focus-visible, [role="button"]:focus-visible, a:focus-visible,
+  input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) { .auth-character.arriving { animation: none; } }
