@@ -184,6 +184,28 @@
           const text = tr(node.dataset.i18n);
           if (text) node.textContent = text;
         });
+        document.querySelectorAll(".nav-item[data-page]").forEach((button) => {
+          const label = button.querySelector(".nav-label")?.textContent.trim();
+          if (label) {
+            button.dataset.label = label;
+            button.setAttribute("aria-label", label);
+          }
+        });
+        const guidanceLabel = $("#subtle-guide-btn span")?.textContent.trim();
+        if (guidanceLabel) {
+          $("#subtle-guide-btn").dataset.label = guidanceLabel;
+          $("#subtle-guide-btn").setAttribute("aria-label", guidanceLabel);
+        }
+        const healthLabel = $(".top-my-health-btn .user-meta-single")?.textContent.trim();
+        if (healthLabel) {
+          $(".top-my-health-btn").dataset.label = healthLabel;
+          $(".top-my-health-btn").setAttribute("aria-label", healthLabel);
+        }
+        const chatsLabel = $(".drawer-chats-sec .sec-label")?.textContent.trim();
+        if (chatsLabel) {
+          $("#drawer-chats-toggle").dataset.label = chatsLabel;
+          $("#drawer-chats-toggle").setAttribute("aria-label", chatsLabel);
+        }
         const input = $("#inp");
         if (input) input.placeholder = ({ en: "Ask Mr.Doc about symptoms or medical records…", hi: "लक्षणों या मेडिकल रिकॉर्ड के बारे में पूछें…", te: "లక్షణాలు లేదా వైద్య రికార్డుల గురించి అడగండి…", ta: "அறிகுறிகள் அல்லது மருத்துவ பதிவுகள் பற்றி கேளுங்கள்…" })[S.lang];
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -885,7 +907,7 @@
       }
       window.addEventListener("resize", syncTimelinePill, { passive: true });
 
-      function syncDrawerNavPill() {
+      function syncDrawerNavPill(animate = true) {
         const nav = $(".drawer-nav");
         const active = nav?.querySelector(".nav-item.on");
         if (!nav) return;
@@ -894,6 +916,11 @@
           indicator?.classList.add("is-hidden");
           return;
         }
+        // Keep the previous shape while the drawer is closed. The page switch
+        // closes the drawer immediately, so measuring here would consume the
+        // transition before the user can see it. Move the pill on the next open.
+        if (indicator && !$("#drawer").classList.contains("open")) return;
+        const wasHidden = indicator?.classList.contains("is-hidden") || false;
         const isNew = !indicator;
         if (isNew) {
           indicator = document.createElement("span");
@@ -904,19 +931,68 @@
         indicator.classList.remove("is-hidden");
         const navRect = nav.getBoundingClientRect();
         const activeRect = active.getBoundingClientRect();
-        indicator.style.width = `${activeRect.width}px`;
-        indicator.style.height = `${activeRect.height}px`;
-        indicator.style.transform = `translate(${activeRect.left - navRect.left}px, ${activeRect.top - navRect.top}px)`;
+        const next = {
+          t: activeRect.top - navRect.top,
+          r: navRect.right - activeRect.right,
+          b: navRect.bottom - activeRect.bottom,
+          l: activeRect.left - navRect.left,
+        };
+        const clip = (coords) => `inset(${coords.t}px ${coords.r}px ${coords.b}px ${coords.l}px round 11px)`;
+        let previous = indicator.__liquidCoords;
+        let currentClip = "";
+        if (indicator.__liquidAnimation) {
+          indicator.__liquidAnimation.commitStyles?.();
+          currentClip = getComputedStyle(indicator).clipPath;
+          const match = currentClip.match(/^inset\(\s*([\d.-]+)px\s+([\d.-]+)px\s+([\d.-]+)px\s+([\d.-]+)px/i);
+          if (match) previous = { t: Number(match[1]), r: Number(match[2]), b: Number(match[3]), l: Number(match[4]) };
+        }
+        indicator.__liquidCoords = next;
+        indicator.__liquidAnimation?.cancel();
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!animate || !previous || isNew || wasHidden || reducedMotion || !indicator.animate) {
+          indicator.style.clipPath = clip(next);
+        } else {
+          const vertical = Math.abs(next.t - previous.t) >= Math.abs(next.l - previous.l);
+          const movingDown = next.t > previous.t;
+          const movingRight = next.l > previous.l;
+          const leadingEdge = vertical ? (movingDown ? "b" : "t") : (movingRight ? "r" : "l");
+          const middle = { ...previous, [leadingEdge]: next[leadingEdge] };
+          const easing = "cubic-bezier(.22,1,.36,1)";
+          indicator.__liquidAnimation = indicator.animate(
+            [
+              { clipPath: currentClip || clip(previous), offset: 0 },
+              { clipPath: clip(middle), offset: 0.4, easing: "cubic-bezier(.16,1,.3,1)" },
+              { clipPath: clip(next), offset: 1 },
+            ],
+            { duration: 550, easing, fill: "forwards" },
+          );
+        }
         if (isNew) requestAnimationFrame(() => indicator.classList.remove("is-initializing"));
       }
-      window.addEventListener("resize", syncDrawerNavPill, { passive: true });
-      const drawerNavObserver = new ResizeObserver(syncDrawerNavPill);
+      window.addEventListener("resize", () => syncDrawerNavPill(false), { passive: true });
+      const drawerNavObserver = new ResizeObserver(() => syncDrawerNavPill(false));
       if ($(".drawer-nav")) drawerNavObserver.observe($(".drawer-nav"));
 
       // ---------------------------------------------------------------------------
       // Page Switching & Drawer Controls
       // ---------------------------------------------------------------------------
       function openDrawer(open) {
+        if (document.body.classList.contains("sidebar-persistent")) {
+          $("#drawer").classList.add("open");
+          $("#drawer-backdrop").classList.remove("open");
+          $("#burger-btn").setAttribute("aria-expanded", "false");
+          $("#drawer").inert = false;
+          $("#app-main").inert = false;
+          $(".top-bar").inert = false;
+          if (open) {
+            renderDrawerChats();
+            requestAnimationFrame(() => syncDrawerNavPill(false));
+          } else {
+            $(".drawer-chats-sec").classList.remove("show");
+            $("#drawer-chats-toggle").setAttribute("aria-expanded", "false");
+          }
+          return;
+        }
         $("#drawer").classList.toggle("open", open);
         $("#drawer-backdrop").classList.toggle("open", open);
         $("#burger-btn").setAttribute("aria-expanded", String(open));
@@ -969,7 +1045,16 @@
 
         // Update active state in drawer nav
         document.querySelectorAll(".nav-item").forEach((btn) => {
-          btn.classList.toggle("on", btn.dataset.page === page);
+          const isCurrent = btn.dataset.page === page;
+          btn.classList.toggle("on", isCurrent);
+          if (isCurrent) btn.setAttribute("aria-current", "page");
+          else btn.removeAttribute("aria-current");
+        });
+        document.querySelectorAll(".top-bar [data-page]").forEach((btn) => {
+          const isCurrent = btn.dataset.page === page;
+          btn.classList.toggle("on", isCurrent);
+          if (isCurrent) btn.setAttribute("aria-current", "page");
+          else btn.removeAttribute("aria-current");
         });
         requestAnimationFrame(syncDrawerNavPill);
       }
@@ -988,7 +1073,8 @@
           b.className = "item" + (c.id === S.active ? " on" : "");
           const s = document.createElement("button");
           s.className = "chat-select";
-          s.textContent = c.title;
+          // Keep an untouched history entry distinct from the New Chat action.
+          s.textContent = c.title === "New chat" ? "Untitled chat" : c.title;
           s.style.cursor = "pointer";
           s.onclick = () => {
             S.active = c.id;
@@ -3028,6 +3114,33 @@
       // ---------------------------------------------------------------------------
       // Event Listeners & Setup
       // ---------------------------------------------------------------------------
+      const themeButtons = [...document.querySelectorAll(".theme-mode-btn")];
+      function setColorTheme(theme, trigger, animate = true) {
+        const root = document.documentElement;
+        if (root.dataset.theme === theme) return;
+        const apply = () => {
+          root.dataset.theme = theme;
+          try { localStorage.setItem("mrdoc-theme", theme); } catch (_) {}
+          themeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.theme === theme)));
+        };
+        if (!animate || !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          apply();
+          return;
+        }
+        const rect = trigger.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+        const transition = document.startViewTransition(apply);
+        transition.ready.then(() => root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 560, easing: "cubic-bezier(.22,1,.36,1)", pseudoElement: "::view-transition-new(root)" },
+        )).catch(() => {});
+      }
+      themeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(document.documentElement.dataset.theme === button.dataset.theme));
+        button.addEventListener("click", () => setColorTheme(button.dataset.theme, button));
+      });
       let tT;
       $("#inp").addEventListener("input", () => {
         if (busy) return;
@@ -3056,6 +3169,19 @@
       $("#burger-btn").onclick = () => openDrawer(true);
       $("#drawer-close").onclick = () => openDrawer(false);
       $("#drawer-backdrop").onclick = () => openDrawer(false);
+      const drawerChatsSection = $(".drawer-chats-sec");
+      const drawerChatsToggle = $("#drawer-chats-toggle");
+      drawerChatsToggle.onclick = () => {
+        const show = !drawerChatsSection.classList.contains("show");
+        drawerChatsSection.classList.toggle("show", show);
+        drawerChatsToggle.setAttribute("aria-expanded", String(show));
+        if (show) renderDrawerChats();
+      };
+      document.addEventListener("pointerdown", (event) => {
+        if (!document.body.classList.contains("sidebar-persistent") || drawerChatsSection.contains(event.target)) return;
+        drawerChatsSection.classList.remove("show");
+        drawerChatsToggle.setAttribute("aria-expanded", "false");
+      });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") openDrawer(false);
       });
@@ -3070,7 +3196,7 @@
         };
       });
       $("#subtle-guide-btn").onclick = () => switchPage("guide");
-      $(".profile-bottom-btn").onclick = () => switchPage("me");
+      $(".top-my-health-btn").onclick = () => switchPage("me");
 
       // Front Page Language Dropdown (ENG ▾)
       const langBtn = $("#lang-btn");
@@ -3430,6 +3556,37 @@
       const introStatus = $("#intro-status");
       const introSkip = $("#intro-skip");
       const authScreen = $("#auth-screen");
+      function syncSidebarPresentation() {
+        const docked = window.matchMedia("(min-width: 300px)").matches &&
+          !document.body.classList.contains("intro-active") &&
+          !document.body.classList.contains("intro-revealing") &&
+          !document.body.classList.contains("touring") &&
+          authScreen.hidden;
+        const drawer = $("#drawer");
+        document.body.classList.toggle("sidebar-persistent", docked);
+        if (docked) {
+          drawer.classList.add("open");
+          drawer.setAttribute("role", "complementary");
+          drawer.removeAttribute("aria-modal");
+          drawer.inert = false;
+          $("#drawer-backdrop").classList.remove("open");
+          $("#app-main").inert = false;
+          $(".top-bar").inert = false;
+          $("#burger-btn").setAttribute("aria-expanded", "false");
+          drawer.querySelectorAll(".nav-item").forEach((item) => item.removeAttribute("title"));
+          requestAnimationFrame(() => syncDrawerNavPill(false));
+        } else {
+          drawer.classList.remove("open");
+          drawer.setAttribute("role", "dialog");
+          drawer.setAttribute("aria-modal", "true");
+          drawer.inert = true;
+          $("#drawer-backdrop").classList.remove("open");
+          $("#app-main").inert = false;
+          $(".top-bar").inert = false;
+          $("#burger-btn").setAttribute("aria-expanded", "false");
+        }
+      }
+      window.addEventListener("resize", syncSidebarPresentation, { passive: true });
       // Keep one character pose visible during the whole travel to prevent frame popping.
       const travelDoctor = document.createElement("div");
       travelDoctor.className = "doctor-traveler";
@@ -3628,6 +3785,7 @@
         setTimeout(() => {
           introScreen.hidden = true;
           document.body.classList.remove("intro-revealing");
+          syncSidebarPresentation();
           setTimeout(() => {
             if (startTourNow) {
               window.startTour && window.startTour(true);
@@ -3661,6 +3819,7 @@
       function showAuth(startTourAfterIntro = false) {
         pendingTour = startTourAfterIntro;
         authScreen.hidden = false;
+        syncSidebarPresentation();
         const welcomeIsVisible = introScreen.isConnected && !introScreen.hidden;
         if (welcomeIsVisible) introScreen.classList.add("auth-transitioning");
         authScreen.classList.remove("is-entering");
@@ -3743,6 +3902,7 @@
           authScreen.classList.remove("is-entering", "is-returning");
           authScreen.hidden = true;
           authHomeAfterSubmit = false;
+          syncSidebarPresentation();
           return;
         }
 
@@ -3799,6 +3959,7 @@
           authScreen.hidden = true;
           clearCharacterTraveler();
           document.body.classList.remove("intro-active", "intro-revealing");
+          syncSidebarPresentation();
           $("#inp").focus({ preventScroll: true });
           return;
         }
@@ -3844,6 +4005,7 @@
       }
 
       document.body.classList.add("intro-active");
+      syncSidebarPresentation();
 
 
       /* ---------- Guided tour (spotlight + blur) ----------
@@ -4244,6 +4406,7 @@
           } catch (_) {}
           if (root) root.classList.remove("on");
           document.body.classList.remove("touring");
+          syncSidebarPresentation();
           if (activePage !== "chat") switchPage("chat");
           else if (drawerOpen()) openDrawer(false);
           const inp = document.getElementById("inp");
@@ -4262,6 +4425,7 @@
           build();
           running = true;
           document.body.classList.add("touring");
+          syncSidebarPresentation();
           root.classList.add("on", "no-anim");
           await show(0, 1);
           requestAnimationFrame(() =>
