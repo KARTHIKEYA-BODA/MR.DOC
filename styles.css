@@ -5726,4 +5726,29 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus
     box-shadow: none;
   }
 }
+.drawer-nav { position: relative; isolation: isolate; }
+.drawer-nav-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  border-left: 3px solid #247db9;
+  border-radius: 11px;
+  background: #eaf3fb;
+  box-shadow: 0 5px 16px rgba(23, 105, 170, .09);
+  pointer-events: none;
+  opacity: 1;
+  will-change: transform, width, height;
+  transition: transform 380ms var(--motion-ease), width 320ms var(--motion-ease), height 320ms var(--motion-ease), opacity 160ms ease;
+}
+.drawer-nav-indicator.is-initializing { opacity: 0; transition: none; }
+.drawer-nav-indicator.is-hidden { opacity: 0; }
+.drawer .drawer-nav > .nav-item { z-index: 1; background: transparent; }
+.drawer .drawer-nav > .nav-item.on { background: transparent; color: #155b94; box-shadow: none; }
+.drawer .drawer-nav > .nav-item.on::before { background: #d6eafa; color: #155b94; }
+.drawer .drawer-nav > .nav-item:hover { background: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .drawer-nav-indicator { transition: opacity 120ms ease; will-change: auto; }
+  .drawer-nav-indicator.is-initializing { transition: none; }
+}
 @media (prefers-reduced-motion: reduce) { .auth-character.arriving { animation: none; } }

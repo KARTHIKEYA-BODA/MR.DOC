@@ -885,6 +885,34 @@
       }
       window.addEventListener("resize", syncTimelinePill, { passive: true });
 
+      function syncDrawerNavPill() {
+        const nav = $(".drawer-nav");
+        const active = nav?.querySelector(".nav-item.on");
+        if (!nav) return;
+        let indicator = nav.querySelector(".drawer-nav-indicator");
+        if (!active) {
+          indicator?.classList.add("is-hidden");
+          return;
+        }
+        const isNew = !indicator;
+        if (isNew) {
+          indicator = document.createElement("span");
+          indicator.className = "drawer-nav-indicator is-initializing";
+          indicator.setAttribute("aria-hidden", "true");
+          nav.prepend(indicator);
+        }
+        indicator.classList.remove("is-hidden");
+        const navRect = nav.getBoundingClientRect();
+        const activeRect = active.getBoundingClientRect();
+        indicator.style.width = `${activeRect.width}px`;
+        indicator.style.height = `${activeRect.height}px`;
+        indicator.style.transform = `translate(${activeRect.left - navRect.left}px, ${activeRect.top - navRect.top}px)`;
+        if (isNew) requestAnimationFrame(() => indicator.classList.remove("is-initializing"));
+      }
+      window.addEventListener("resize", syncDrawerNavPill, { passive: true });
+      const drawerNavObserver = new ResizeObserver(syncDrawerNavPill);
+      if ($(".drawer-nav")) drawerNavObserver.observe($(".drawer-nav"));
+
       // ---------------------------------------------------------------------------
       // Page Switching & Drawer Controls
       // ---------------------------------------------------------------------------
@@ -901,6 +929,7 @@
           });
           renderDrawerChats();
           $("#drawer-close").focus();
+          requestAnimationFrame(syncDrawerNavPill);
         } else if ($("#drawer").contains(document.activeElement))
           $("#burger-btn").focus();
       }
@@ -942,6 +971,7 @@
         document.querySelectorAll(".nav-item").forEach((btn) => {
           btn.classList.toggle("on", btn.dataset.page === page);
         });
+        requestAnimationFrame(syncDrawerNavPill);
       }
 
       function renderDrawerChats() {
