@@ -1,2 +1,3 @@
-# Core app and image OCR connector: standard library only.
+# Core app dependencies, including encrypted account-data storage.
 # Optional Unlimited-OCR PDF rendering: requirements-unlimited-ocr.txt.
+cryptography>=41.0.0

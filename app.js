@@ -13,6 +13,7 @@
           window.location.protocol === "file:"
             ? "http://localhost:8000/api/chat"
             : "/api/chat",
+        transcribeEndpoint: window.location.protocol === "file:" ? "http://localhost:8000/api/transcribe" : "/api/transcribe",
         ocrEndpoint:
           window.location.protocol === "file:"
             ? "http://localhost:8000/api/analyze-record"
@@ -30,10 +31,9 @@
         try {
           const response = await fetch(url, {
             method: payload === undefined ? "GET" : "POST",
-            headers:
-              payload === undefined
-                ? {}
-                : { "Content-Type": "application/json" },
+            headers: payload === undefined
+              ? {}
+              : { "Content-Type": "application/json", ...(window.mrdocCsrfToken ? { "X-CSRF-Token": window.mrdocCsrfToken } : {}) },
             body: payload === undefined ? undefined : JSON.stringify(payload),
             signal: controller.signal,
           });
@@ -114,7 +114,7 @@
           bodyTitle: "Full Body Check", bodyIntro: "Health areas found in your uploaded records are shown here.",
           noBody: "No body area has been identified in your uploaded records yet.", wholeBody: "Whole-body condition",
           locationUnknown: "No single injury location was recorded.", recordSource: "From uploaded record", openRecord: "Open record",
-          front: "Front", side: "Side", back: "Back", rotateHint: "Use the arrows to see another side.", myHealthTitle: "My Health",
+          front: "Front", side: "Side", back: "Back", resetView: "Reset 3D view", rotateHint: "Drag left or right to rotate · scroll or pinch to zoom.", myHealthTitle: "My Health",
         },
         hi: {
           tutorial: "ट्यूटोरियल", recentChats: "हाल की चैट", newChat: "नई चैट", records: "मेडिकल रिकॉर्ड",
@@ -125,7 +125,7 @@
           bodyTitle: "पूरे शरीर की जाँच", bodyIntro: "आपके अपलोड किए रिकॉर्ड में मिले स्वास्थ्य क्षेत्र यहाँ दिखाए जाते हैं।",
           noBody: "आपके रिकॉर्ड में अभी कोई शरीर का क्षेत्र नहीं मिला।", wholeBody: "पूरे शरीर से जुड़ी स्थिति",
           locationUnknown: "कोई एक चोट का स्थान दर्ज नहीं है।", recordSource: "अपलोड किए रिकॉर्ड से", openRecord: "रिकॉर्ड खोलें",
-          front: "सामने", side: "बगल", back: "पीछे", rotateHint: "दूसरी ओर देखने के लिए तीर दबाएँ।", myHealthTitle: "मेरा स्वास्थ्य",
+          front: "सामने", side: "बगल", back: "पीछे", resetView: "3D दृश्य रीसेट करें", rotateHint: "घुमाने के लिए बाएँ या दाएँ खींचें · ज़ूम के लिए स्क्रॉल या पिंच करें।", myHealthTitle: "मेरा स्वास्थ्य",
         },
         te: {
           tutorial: "ట్యుటోరియల్", recentChats: "ఇటీవలి చాట్‌లు", newChat: "కొత్త చాట్", records: "వైద్య రికార్డులు",
@@ -136,7 +136,7 @@
           bodyTitle: "పూర్తి శరీర పరిశీలన", bodyIntro: "మీరు అప్‌లోడ్ చేసిన రికార్డుల్లో ఉన్న ఆరోగ్య ప్రాంతాలు ఇక్కడ కనిపిస్తాయి.",
           noBody: "మీ రికార్డుల్లో ఇంకా శరీర ప్రాంతం గుర్తించబడలేదు.", wholeBody: "మొత్తం శరీరానికి సంబంధించిన పరిస్థితి",
           locationUnknown: "ఒకే గాయం ప్రాంతం నమోదు కాలేదు.", recordSource: "అప్‌లోడ్ చేసిన రికార్డు నుండి", openRecord: "రికార్డు తెరవండి",
-          front: "ముందు", side: "పక్క", back: "వెనుక", rotateHint: "మరో వైపు చూడటానికి బాణాలను ఉపయోగించండి.", myHealthTitle: "నా ఆరోగ్యం",
+          front: "ముందు", side: "పక్క", back: "వెనుక", resetView: "3D వీక్షణను రీసెట్ చేయండి", rotateHint: "తిప్పడానికి ఎడమ లేదా కుడి వైపు లాగండి · జూమ్ కోసం స్క్రోల్ లేదా పించ్ చేయండి.", myHealthTitle: "నా ఆరోగ్యం",
         },
         ta: {
           tutorial: "வழிகாட்டி", recentChats: "சமீபத்திய உரையாடல்கள்", newChat: "புதிய உரையாடல்", records: "மருத்துவ பதிவுகள்",
@@ -147,7 +147,7 @@
           bodyTitle: "முழு உடல் பரிசோதனை", bodyIntro: "நீங்கள் பதிவேற்றிய மருத்துவ பதிவுகளில் உள்ள உடல் பகுதிகள் இங்கே காட்டப்படும்.",
           noBody: "உங்கள் பதிவுகளில் இன்னும் எந்த உடல் பகுதியும் கண்டறியப்படவில்லை.", wholeBody: "முழு உடலைச் சார்ந்த நிலை",
           locationUnknown: "ஒரு குறிப்பிட்ட காய இடம் பதிவு செய்யப்படவில்லை.", recordSource: "பதிவேற்றிய பதிவிலிருந்து", openRecord: "பதிவைத் திற",
-          front: "முன்", side: "பக்கம்", back: "பின்", rotateHint: "மற்றொரு பக்கத்தைப் பார்க்க அம்புகளைப் பயன்படுத்தவும்.", myHealthTitle: "என் உடல்நலம்",
+          front: "முன்", side: "பக்கம்", back: "பின்", resetView: "3D காட்சியை மீட்டமை", rotateHint: "சுழற்ற இடது அல்லது வலப்புறம் இழுக்கவும் · பெரிதாக்க ஸ்க்ரோல் அல்லது பிஞ்ச் செய்யவும்.", myHealthTitle: "என் உடல்நலம்",
         },
       };
       const tr = (key) => UI_TEXT[S.lang]?.[key] || UI_TEXT.en[key] || key;
@@ -507,18 +507,79 @@
           recordId: stringValue(item.recordId),
         }));
       S.reminders = (Array.isArray(S.reminders) ? S.reminders : [])
-        .filter((item) => item && typeof item.recordId === "string" && Number.isInteger(item.medicineIndex) && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || ""))
-        .map((item) => ({ recordId: item.recordId, medicineIndex: item.medicineIndex, time: item.time, lastFired: stringValue(item.lastFired) }));
+        .filter((item) => item && typeof item.recordId === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || "") && (item.type === "care" ? typeof item.message === "string" && item.message.trim() : Number.isInteger(item.medicineIndex) && item.medicineIndex >= 0))
+        .map((item) => ({ id: stringValue(item.id) || crypto.randomUUID(), type: item.type === "care" ? "care" : "medicine", recordId: item.recordId, medicineIndex: Number.isInteger(item.medicineIndex) ? item.medicineIndex : -1, message: stringValue(item.message), days: Array.isArray(item.days) ? [...new Set(item.days.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))] : [], startDate: /^\d{4}-\d{2}-\d{2}$/.test(item.startDate || "") ? item.startDate : "", endDate: /^\d{4}-\d{2}-\d{2}$/.test(item.endDate || "") ? item.endDate : "", time: item.time, scheduledAt: Number.isFinite(Date.parse(item.scheduledAt || "")) ? item.scheduledAt : "", firedAt: stringValue(item.firedAt), lastFired: stringValue(item.lastFired), takenDates: Array.isArray(item.takenDates) ? [...new Set(item.takenDates.filter((date) => typeof date === "string"))] : [] }));
       if (!S.chats.some((c) => c.id === S.active))
         S.active = S.chats[0]?.id || null;
       if (!["en", "hi", "te", "ta"].includes(S.lang)) S.lang = "en";
       delete S.abha;
       S.voice = S.voice !== false;
       S.readerMode = S.readerMode === true;
+      S.profileId = stringValue(S.profileId) || crypto.randomUUID();
+      S.appointments = (Array.isArray(S.appointments) ? S.appointments : [])
+        .filter((item) => item && typeof item.id === "string")
+        .map((item) => ({ id: item.id, date: stringValue(item.date), time: stringValue(item.time), clinician: stringValue(item.clinician), facility: stringValue(item.facility), tests: stringValue(item.tests), notes: stringValue(item.notes) }));
+      S.familyRole = ["father", "mother", "son", "daughter", "custom"].includes(stringValue(S.familyRole)) ? stringValue(S.familyRole) : "";
+      S.familyCustomName = stringValue(S.familyCustomName);
+      S.familySelfName = stringValue(S.familySelfName) || stringValue(S.profile?.name);
+      S.familySelfAge = stringValue(S.familySelfAge);
+      S.familySelfPhoto = typeof S.familySelfPhoto === "string" && S.familySelfPhoto.startsWith("data:image/") ? S.familySelfPhoto.slice(0, 500000) : "";
+      S.familyMembers = (Array.isArray(S.familyMembers) ? S.familyMembers : [])
+        .filter((item) => item && typeof item.id === "string" && typeof item.relation === "string")
+        .filter((item, index, list) => list.findIndex((other) => other.relation === item.relation) === index)
+        .map((item) => ({ id: item.id, relation: item.relation, name: stringValue(item.name), age: stringValue(item.age), photo: typeof item.photo === "string" && item.photo.startsWith("data:image/") ? item.photo.slice(0, 500000) : "", records: (Array.isArray(item.records) ? item.records : []).map(normalizeRecord).filter(Boolean) }));
+      S.familySelectedMemberId = stringValue(S.familySelectedMemberId);
+      if (!S.familyMembers.some((member) => member.id === S.familySelectedMemberId)) S.familySelectedMemberId = S.familyMembers[0]?.id || "";
+      S.watchConnected = S.watchConnected === true;
       document.body.classList.toggle("reader-mode", S.readerMode);
+      let cloudAuth = null;
+      window.mrdocCsrfToken = "";
+      let cloudSaveTimer = 0;
+      let cloudSaveInFlight = false;
+      let cloudSaveQueued = false;
+      async function syncAccountWorkspace() {
+        if (!cloudAuth) return false;
+        if (cloudSaveInFlight) { cloudSaveQueued = true; return false; }
+        cloudSaveInFlight = true;
+        cloudSaveQueued = false;
+        const snapshot = JSON.stringify(S);
+        if (snapshot.length > 8 * 1024 * 1024) {
+          notify("This workspace is too large to sync to your account. Download a backup and reduce stored chat or report data.", true);
+          cloudSaveInFlight = false;
+          return false;
+        }
+        try {
+          const response = await fetch("/api/account/data", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": cloudAuth.csrfToken },
+            credentials: "same-origin",
+            body: JSON.stringify({ data: JSON.parse(snapshot) }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Your workspace could not be synced.");
+          if (localStorage.getItem("carely") === snapshot) {
+            localStorage.setItem("mrdoc_cloud_dirty", "0");
+            if (result.updatedAt) localStorage.setItem("mrdoc_cloud_updated_at", result.updatedAt);
+          }
+          return true;
+        } catch (error) {
+          if (error?.name !== "AbortError") notify(`${error.message || "Account sync failed."} Your latest changes remain on this device.`, true);
+          return false;
+        } finally {
+          cloudSaveInFlight = false;
+          if (cloudSaveQueued) syncAccountWorkspace();
+        }
+      }
+      function queueAccountSync() {
+        if (!cloudAuth) return;
+        try { localStorage.setItem("mrdoc_cloud_dirty", "1"); } catch (_) {}
+        clearTimeout(cloudSaveTimer);
+        cloudSaveTimer = setTimeout(syncAccountWorkspace, 700);
+      }
       const save = () => {
         try {
           localStorage.setItem("carely", JSON.stringify(S));
+          queueAccountSync();
           return true;
         } catch (_) {
           notify(
@@ -720,7 +781,11 @@
           const recSummaries = personalRecords()
             .slice(0, 3)
             .map(
-              (r) => `${r.recordType} (${r.date}): ${r.diagnoses.join(", ")}${r.patientAge ? "; age printed in record: " + r.patientAge : ""}${r.patientGender ? "; sex printed in record: " + r.patientGender : ""}`,
+              (r) => {
+                const confirmedMedicines = (r.medicines || []).filter((medicine) => r.medicinesConfirmed && medicine.userVerified && !medicine.needsReview).map((medicine) => [medicine.name, medicine.strength || medicine.dosage, medicine.frequency, medicine.timing, medicine.instructions].filter(Boolean).join(" · "));
+                const labs = (r.labTests || []).filter((test) => !test.needsReview).slice(0, 8).map((test) => `${test.test}: ${test.value} ${test.unit || ""} ${test.status || ""}`.trim());
+                return `${r.recordType} (${r.date}): conditions explicitly written: ${r.diagnoses.join(", ") || "none"}; confirmed medicines and instructions: ${confirmedMedicines.join(" | ") || "none"}; recorded tests: ${labs.join(" | ") || "none"}${r.patientAge ? "; age printed in record: " + r.patientAge : ""}${r.patientGender ? "; sex printed in record: " + r.patientGender : ""}`;
+              },
             );
           o.push("Analyzed Records: " + recSummaries.join(" | "));
         }
@@ -753,6 +818,32 @@
           box.append(summary);
         }
 
+        if (record.selfCareTips?.length) {
+          const care = document.createElement("section");
+          care.className = "chat-rec-care";
+          const heading = document.createElement("b");
+          heading.textContent = "Care focus from this report";
+          care.append(heading);
+          const list = document.createElement("ul");
+          record.selfCareTips.slice(0, 3).forEach((tip) => {
+            const item = document.createElement("li");
+            const text = document.createElement("span");
+            text.textContent = tip;
+            item.append(text);
+            if (!isDemo(record) && !isUnavailable(record)) {
+              const reminder = document.createElement("button");
+              reminder.type = "button";
+              reminder.className = "btn-sm btn-sec";
+              reminder.textContent = "Remind me";
+              reminder.onclick = () => openCareReminderSetup(record.id, tip);
+              item.append(reminder);
+            }
+            list.append(item);
+          });
+          care.append(list);
+          box.append(care);
+        }
+
         if (record.diagnoses?.length) {
           const diagnoses = document.createElement("p");
           diagnoses.className = "chat-rec-diagnoses";
@@ -776,11 +867,9 @@
           box.append(severity);
         }
         if (/foot|sole|heel|toe/i.test(record.bodySite || "")) {
-          const site = record.bodySite.toLowerCase();
-          const [mapX, mapY] = /toe|front/.test(site) ? [99, 53] : /heel|back/.test(site) ? [65, 163] : /sole|bottom|plantar/.test(site) ? [78, 145] : [91, 119];
-          const figure = document.createElement("figure");
+          const figure = document.createElement("div");
           figure.className = "chat-injury-map";
-          figure.innerHTML = `<svg viewBox="0 0 140 190" role="img" aria-label="Simple foot diagram with the document-stated area marked"><path d="M61 174c-12-6-15-17-12-31l10-45c2-11 2-25 3-38l2-30c1-10 8-12 12-3l5 28 3-35c1-9 9-11 12-2l3 33 5-26c2-9 10-9 12 0l-2 40c10-1 17 6 15 17l-9 54c-4 23-17 38-38 43-8 2-15 0-21-5z" fill="none" stroke="#80939c" stroke-width="4" stroke-linejoin="round"/><path d="M64 103l14 15 20-3 23-4M62 119l15 13 20-3 19-4M58 139l17 10 19-3 15-5M65 98l1-35m13 48 1-51m17 48 2-46m17 43 3-34" fill="none" stroke="#80939c" stroke-width="3" stroke-linecap="round"/><circle cx="${mapX}" cy="${mapY}" r="9" fill="#e2424e"/><path d="M${mapX-4} ${mapY}h8m-4-4v8" stroke="white" stroke-width="2"/></svg><figcaption>${esc(record.bodySite)} · illustrative location</figcaption>`;
+          figure.innerHTML = anatomyImage(record);
           box.append(figure);
         }
         if (record.id?.startsWith("REC-OCR-") && !record.documentReviewed) {
@@ -820,7 +909,8 @@
       function bubble(role, text, recordId) {
         const element = document.createElement("div");
         element.className = "m " + (role === "user" ? "u" : "a");
-        element.textContent = text;
+        if (role === "assistant") renderAssistantReply(element, text);
+        else element.textContent = text;
         const record = S.records.find((r) => r.id === recordId);
         if (record) {
           element.classList.add("has-record");
@@ -831,6 +921,88 @@
         $("#msgs").appendChild(element);
         $("#msgs").scrollTop = $("#msgs").scrollHeight;
         return element;
+      }
+
+      function appendReplyInline(parent, text) {
+        const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+        parts.forEach((part) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            const strong = document.createElement("strong");
+            strong.textContent = part.slice(2, -2);
+            parent.append(strong);
+          } else if (part) parent.append(document.createTextNode(part));
+        });
+      }
+
+      function renderAssistantReply(container, text) {
+        const lines = String(text || "").replace(/\r/g, "").split("\n");
+        let medicineSection = false;
+        let list = null;
+        const flushList = () => {
+          if (list) container.append(list);
+          list = null;
+        };
+        lines.forEach((rawLine) => {
+          const line = rawLine.trim();
+          if (!line) { flushList(); return; }
+          const cleanLine = line.replace(/^#{1,3}\s+/, "");
+          const heading = cleanLine.match(/^\*\*(.+?)\*\*\s*:?[\s]*$/) ||
+            cleanLine.match(/^(What your record says|What may help|When to get care|(?:the )?(?:confirmed )?medicines (?:listed|confirmed)(?: are)?|Please check)(?:\s*:)?$/i);
+          if (heading) {
+            flushList();
+            const title = document.createElement("h3");
+            title.className = "chat-answer-heading";
+            appendReplyInline(title, heading[1]);
+            container.append(title);
+            medicineSection = /medicines/i.test(heading[1]);
+            return;
+          }
+          if (/^(?:medicines listed|confirmed medicines)(?:\s*:)?$/i.test(cleanLine)) {
+            flushList();
+            medicineSection = true;
+            const title = document.createElement("h3");
+            title.className = "chat-answer-heading";
+            title.textContent = cleanLine.replace(/:$/, "");
+            container.append(title);
+            return;
+          }
+          const bullet = cleanLine.match(/^[-•*]\s+(.+)$/);
+          const content = bullet ? bullet[1] : cleanLine;
+          if (medicineSection && !/^(?:please check|check before)\b/i.test(content)) {
+            const medicine = content.match(/^(?:\*\*)?([^:*—–]{2,70}?)(?:\*\*)?\s*(?::|[—–])\s*(.+)$/);
+            if (medicine) {
+              flushList();
+              const card = document.createElement("div");
+              card.className = "chat-answer-medicine";
+              const name = document.createElement("strong");
+              name.textContent = medicine[1].replace(/\*\*/g, "").trim();
+              const instruction = document.createElement("span");
+              appendReplyInline(instruction, medicine[2]);
+              card.append(name, instruction);
+              container.append(card);
+              return;
+            }
+          }
+          if (bullet) {
+            if (!list) list = document.createElement("ul");
+            const item = document.createElement("li");
+            appendReplyInline(item, content);
+            list.append(item);
+            return;
+          }
+          flushList();
+          const paragraph = document.createElement("p");
+          const label = content.match(/^([^:]{2,60}:)\s*(.+)$/);
+          if (label) {
+            const strong = document.createElement("strong");
+            strong.textContent = label[1];
+            paragraph.append(strong, document.createTextNode(" "));
+            appendReplyInline(paragraph, label[2]);
+          } else appendReplyInline(paragraph, content);
+          container.append(paragraph);
+          if (/^(?:please check|check before)\b/i.test(content)) medicineSection = false;
+        });
+        flushList();
       }
 
       // ---------------------------------------------------------------------------
@@ -979,8 +1151,10 @@
       function openDrawer(open) {
         if (document.body.classList.contains("sidebar-persistent")) {
           $("#drawer").classList.add("open");
+          document.body.classList.toggle("sidebar-expanded", open);
           $("#drawer-backdrop").classList.remove("open");
-          $("#burger-btn").setAttribute("aria-expanded", "false");
+          $("#burger-btn").setAttribute("aria-expanded", String(open));
+          $("#burger-btn").setAttribute("aria-label", open ? "Collapse sidebar" : "Expand sidebar");
           $("#drawer").inert = false;
           $("#app-main").inert = false;
           $(".top-bar").inert = false;
@@ -1011,13 +1185,49 @@
       }
 
       let returnPage = "chat";
+      function openHealthQr() {
+        const overlay = $("#health-qr-overlay");
+        const canvas = $("#health-qr-canvas");
+        if (!overlay || !canvas) return;
+        const shareId = `mrdoc://profile/${S.profileId}`;
+        $("#health-qr-name").textContent = S.profile.name || "Mr.Doc profile";
+        $("#health-qr-id").textContent = `Share ID: ${S.profileId.slice(0, 8).toUpperCase()}`;
+        const context = canvas.getContext("2d");
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        if (typeof window.qrcode === "function") {
+          const qr = window.qrcode(0, "M");
+          qr.addData(shareId);
+          qr.make();
+          const modules = qr.getModuleCount();
+          const margin = 10;
+          const cell = (canvas.width - margin * 2) / modules;
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.fillStyle = "#123b52";
+          for (let row = 0; row < modules; row += 1) {
+            for (let col = 0; col < modules; col += 1) {
+              if (!qr.isDark(row, col)) continue;
+              const x = Math.floor(margin + col * cell);
+              const y = Math.floor(margin + row * cell);
+              const width = Math.ceil(margin + (col + 1) * cell) - x;
+              const height = Math.ceil(margin + (row + 1) * cell) - y;
+              context.fillRect(x, y, width, height);
+            }
+          }
+        } else {
+          context.fillStyle = "#edf5f7"; context.fillRect(0, 0, 240, 240); context.fillStyle = "#23485b"; context.font = "15px sans-serif"; context.textAlign = "center"; context.fillText("QR generator unavailable", 120, 115); context.fillText("Share ID shown below", 120, 140);
+        }
+        overlay.hidden = false;
+        $("#health-qr-close")?.focus();
+      }
       function switchPage(page, options = {}) {
         if (!$(`#view-${page}`)) return;
+        if (activePage === "body" && page !== "body") window.MrDocAnatomy?.dispose();
         cancelPendingChat();
         stopSpeech();
         if (page !== activePage && !options.fromBack) returnPage = activePage;
         activePage = page;
-        openDrawer(false);
+        if (!document.body.classList.contains("sidebar-persistent")) openDrawer(false);
 
         // Toggle main views
         document
@@ -1073,16 +1283,20 @@
           b.className = "item" + (c.id === S.active ? " on" : "");
           const s = document.createElement("button");
           s.className = "chat-select";
+          s.type = "button";
+          s.setAttribute("aria-current", c.id === S.active ? "true" : "false");
           // Keep an untouched history entry distinct from the New Chat action.
           s.textContent = c.title === "New chat" ? "Untitled chat" : c.title;
           s.style.cursor = "pointer";
           s.onclick = () => {
             S.active = c.id;
             save();
+            renderDrawerChats();
             switchPage("chat");
           };
           const x = document.createElement("button");
           x.className = "x";
+          x.type = "button";
           x.textContent = "✕";
           x.setAttribute("aria-label", "Delete chat: " + c.title);
           x.onclick = (e) => {
@@ -1106,6 +1320,9 @@
         if (activePage === "records") renderRecordsPage();
         else if (activePage === "timeline") renderTimelinePage();
         else if (activePage === "me") renderProfilePage();
+        else if (activePage === "appointments") renderAppointmentsPage();
+        else if (activePage === "family") renderFamilyPage();
+        else if (activePage === "family-records") renderFamilyRecordsPage();
         else if (activePage === "guide") renderGuidePage();
         else if (activePage === "details") renderHealthDetailsPage();
         else if (activePage === "body") renderBodyMapPage();
@@ -1116,14 +1333,252 @@
       // Full Page Views (Spacious, Clear, Perfect Alignment)
       // ---------------------------------------------------------------------------
 
+      function renderAppointmentsPage() {
+        const el = $("#page-appointments-content");
+        if (!el) return;
+        const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const upcoming = [...S.appointments].filter((item) => !item.date || item.date >= today).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+        const specialties = ["General physician", "Cardiology", "Dermatology", "Endocrinology", "Gastroenterology", "Neurology", "Obstetrics & gynecology", "Oncology", "Ophthalmology", "Orthopedics", "Pediatrics", "Psychiatry", "Pulmonology", "Urology", "Other"];
+        const timeOptions = Array.from({ length: 48 }, (_, index) => { const hour = Math.floor(index / 2), minute = index % 2 ? "30" : "00", value = `${String(hour).padStart(2, "0")}:${minute}`; return `<option value="${value}">${new Date(2000, 0, 1, hour, Number(minute)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</option>`; }).join("");
+        el.innerHTML = `<header class="feature-page-head"><div><span class="body-check-eyebrow">CARE PLANNER</span><h1>Upcoming appointments</h1><p>Keep the visit, location, and tests you were asked to complete in one place.</p></div></header>
+          <section class="appointment-layout">
+            <form class="feature-card appointment-form" id="appointment-form"><h2>Add appointment</h2>
+              <details class="appointment-details" open><summary>Appointment details <span>Choose a date and time</span></summary>
+                <div class="feature-form-grid appointment-fields"><label>Date<input required type="date" name="date" min="${today}"></label><label>Time<select required name="time"><option value="">Select a time</option>${timeOptions}</select></label></div>
+                <div class="feature-form-grid appointment-fields"><label>Doctor or department<select name="clinician" id="appointment-clinician"><option value="">Select a specialty</option>${specialties.map((value) => `<option>${value}</option>`).join("")}</select><input name="customClinician" id="appointment-custom-clinician" maxlength="100" placeholder="Enter doctor or department" hidden></label><label>Hospital or clinic<input name="facility" maxlength="120" placeholder="Hospital or clinic name"></label></div>
+                <label>Upcoming tests<textarea name="tests" rows="2" maxlength="500" placeholder="Add tests only if they were listed by your care team"></textarea></label>
+              </details>
+              <section class="question-generator"><div><h3>Doctor visit guide</h3><p>Generate relevant questions and key points to mention during your visit.</p></div><button class="btn-sm btn-sec" id="generate-appointment-questions" type="button">Generate guide</button></section>
+              <div class="appointment-guide-overlay" id="appointment-guide-overlay" hidden><section class="appointment-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-guide-title"><button class="appointment-guide-close" type="button" aria-label="Close visit guide">×</button><span class="body-check-eyebrow">VISIT GUIDE</span><h2 id="appointment-guide-title">Questions for your doctor</h2><p class="appointment-guide-context" id="appointment-guide-context"></p><div id="appointment-guide-content"></div><small>Use these as prompts. Your care team is the source for medical instructions.</small></section></div>
+              <button class="btn-sm btn-pri" type="submit">Save appointment</button>
+            </form>
+            <section class="feature-card"><h2>Next visits</h2><div class="appointment-list">${upcoming.length ? upcoming.map((item) => `<article class="appointment-item"><time>${esc(item.date || "Date not added")}${item.time ? ` · ${esc(item.time)}` : ""}</time><h3>${esc(item.clinician || "Appointment")}</h3><p>${esc(item.facility || "Location not added")}</p><div><b>Tests:</b> ${esc(item.tests || "No tests recorded")}</div><div><b>Doctor questions:</b> ${esc(item.notes || "Not generated")}</div><button class="btn-sm btn-sec" type="button" data-delete-appointment="${esc(item.id)}">Remove</button></article>`).join("") : `<p class="feature-empty">No upcoming appointments added yet.</p>`}</div></section>
+          </section>`;
+        const form = el.querySelector("#appointment-form");
+        const clinician = form.elements.clinician;
+        const customClinician = form.elements.customClinician;
+        clinician.addEventListener("change", () => { customClinician.hidden = clinician.value !== "Other"; customClinician.required = clinician.value === "Other"; if (customClinician.hidden) customClinician.value = ""; });
+        const guideOverlay = el.querySelector("#appointment-guide-overlay");
+        const closeGuide = () => { guideOverlay.hidden = true; el.querySelector("#generate-appointment-questions").focus(); };
+        el.querySelector(".appointment-guide-close").addEventListener("click", closeGuide);
+        guideOverlay.addEventListener("click", (event) => { if (event.target === guideOverlay) closeGuide(); });
+        el.querySelector("#generate-appointment-questions").addEventListener("click", () => {
+          const selectedClinician = clinician.value === "Other" ? customClinician.value.trim() : clinician.value;
+          const specialty = selectedClinician || "your doctor";
+          const tests = form.elements.tests.value.trim();
+          const specialtyPoint = {
+            Cardiology: "Describe any heart-related symptoms or changes you have noticed.",
+            Dermatology: "Point out any skin changes and when you first noticed them.",
+            Endocrinology: "Mention relevant changes in symptoms or measurements you have tracked.",
+            Gastroenterology: "Describe digestive or appetite changes and when they occur.",
+            Neurology: "Describe changes in headaches, balance, memory or sensation.",
+            "Obstetrics & gynecology": "Mention symptoms or changes you want the clinician to know about.",
+            Oncology: "Bring up symptoms or treatment effects you have noticed.",
+            Ophthalmology: "Describe any vision changes and when they occur.",
+            Orthopedics: "Point out changes in pain, movement or swelling.",
+            Pediatrics: "Describe changes in your child’s symptoms, sleep or activity.",
+            Psychiatry: "Mention changes in mood, sleep or daily routines.",
+            Pulmonology: "Describe changes in breathing or activity.",
+            Urology: "Describe changes in urinary symptoms.",
+          }[specialty] || "Describe your main concern and when you first noticed it.";
+          const questions = [
+            `What are the main things we should focus on for this ${specialty} visit?`,
+            tests ? `What should I understand about these listed tests: ${tests}?` : "Are any tests or follow-up steps relevant to my concern?",
+            "What changes should I watch for, and when should I contact your office?",
+          ];
+          const points = [specialtyPoint, "Mention medicines or supplements you currently take and any questions about them.", ...(tests ? [`Ask how and when to get the results for: ${tests}.`] : [])];
+          el.querySelector("#appointment-guide-context").textContent = specialty;
+          el.querySelector("#appointment-guide-content").innerHTML = `<section><h3>Questions to ask</h3><ul>${questions.map((question) => `<li>${esc(question)}</li>`).join("")}</ul></section><section><h3>Key points to mention</h3><ul>${points.map((point) => `<li>${esc(point)}</li>`).join("")}</ul></section>`;
+          guideOverlay.hidden = false;
+          el.querySelector(".appointment-guide-close").focus();
+        });
+        guideOverlay.addEventListener("keydown", (event) => { if (event.key === "Escape") closeGuide(); });
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          S.appointments.push({ id: crypto.randomUUID(), date: stringValue(data.get("date")), time: stringValue(data.get("time")), clinician: stringValue(data.get("clinician")) === "Other" ? stringValue(data.get("customClinician")) : stringValue(data.get("clinician")), facility: stringValue(data.get("facility")), tests: stringValue(data.get("tests")), notes: stringValue(data.get("notes")) });
+          save(); renderAppointmentsPage(); notify("Appointment saved on this device.");
+        });
+        el.querySelector("[data-go]")?.addEventListener("click", () => switchPage("records"));
+        el.querySelectorAll("[data-delete-appointment]").forEach((button) => button.addEventListener("click", () => {
+          S.appointments = S.appointments.filter((item) => item.id !== button.dataset.deleteAppointment); save(); renderAppointmentsPage();
+        }));
+      }
+
+      const familyRelations = [
+        ["father", "Father", "👨"], ["mother", "Mother", "👩"], ["son", "Son", "👦"], ["daughter", "Daughter", "👧"],
+      ];
+      function renderFamilyPage() {
+        const el = $("#page-family-content");
+        if (!el) return;
+        const supportedMembers = S.familyMembers.filter((item) => item.relation !== S.familyRole && (familyRelations.some(([value]) => value === item.relation) || item.relation === "custom"));
+        if (!S.familyRole) {
+          let selectedRole = "";
+          el.innerHTML = `<header class="feature-page-head"><div><span class="body-check-eyebrow">FAMILY HEALTH · STEP 1 OF 2</span><h1>Who are you?</h1><p>Select one profile for yourself. Your family setup will appear after you continue.</p></div></header><section class="family-section family-setup-step"><h2>Choose your profile</h2><div class="family-profile-grid">${familyRelations.map(([value,label,icon]) => `<button class="family-role-card ${selectedRole === value ? "selected" : ""}" type="button" data-self-role="${value}" aria-pressed="${selectedRole === value}"><span>${icon}</span><b>${label}</b></button>`).join("")}<button class="family-role-card family-custom-card ${selectedRole === "custom" ? "selected" : ""}" type="button" data-self-role="custom" aria-pressed="${selectedRole === "custom"}"><span>＋</span><b>Add your own member</b></button></div><label class="family-custom-name" id="family-self-name-wrap" hidden>Your name<input id="family-self-name" value="${esc(S.familyCustomName || "")}" maxlength="60" placeholder="Enter your name"></label><p class="family-role-feedback" id="family-role-feedback" aria-live="polite">Choose one profile to continue.</p><button class="btn-sm btn-pri family-confirm" id="confirm-family-self" type="button" disabled>Continue to family</button></section>`;
+          const nameWrap = el.querySelector("#family-self-name-wrap");
+          const nameInput = el.querySelector("#family-self-name");
+          el.querySelectorAll("[data-self-role]").forEach((button) => button.addEventListener("click", () => {
+            selectedRole = button.dataset.selfRole;
+            el.querySelectorAll("[data-self-role]").forEach((item) => { const isSelected = item === button; item.classList.toggle("selected", isSelected); item.setAttribute("aria-pressed", String(isSelected)); });
+            nameWrap.hidden = selectedRole !== "custom";
+            el.querySelector("#family-role-feedback").textContent = `Selected: ${selectedRole === "custom" ? "your own member" : familyRelations.find(([value]) => value === selectedRole)?.[1]}.`;
+            el.querySelector("#confirm-family-self").disabled = selectedRole === "custom" && !nameInput.value.trim();
+          }));
+          nameInput.addEventListener("input", () => { el.querySelector("#confirm-family-self").disabled = selectedRole === "custom" && !nameInput.value.trim(); });
+          el.querySelector("#confirm-family-self").addEventListener("click", () => {
+            S.familyRole = selectedRole;
+            if (selectedRole === "custom") S.familyCustomName = nameInput.value.trim();
+            save(); renderFamilyPage();
+            el.querySelector("#family-selection-step")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+          return;
+        }
+        const selectedRelations = new Set(supportedMembers.filter((item) => item.relation !== "custom").map((item) => item.relation));
+        const memberDrafts = new Map(supportedMembers.map((item) => [item.relation, { ...item }]));
+        const customMembers = supportedMembers.filter((item) => item.relation === "custom").map((item) => ({ ...item }));
+        const selfLabel = S.familyRole === "custom" ? S.familyCustomName || "Your profile" : familyRelations.find(([value]) => value === S.familyRole)?.[1] || "Your profile";
+        el.innerHTML = `<header class="feature-page-head"><div><span class="body-check-eyebrow">FAMILY HEALTH · STEP 2 OF 2</span><h1>Your family</h1><p>Choose who to add, then edit each profile below. Changes are saved on this device.</p></div></header>
+          <section class="family-section family-self-profile"><div class="family-section-heading"><h2>Who are you?</h2><button class="btn-sm btn-sec" id="change-family-self" type="button">Change profile</button></div><div class="family-self-row"><span class="family-avatar">${S.familySelfPhoto ? `<img src="${esc(S.familySelfPhoto)}" alt="">` : (familyRelations.find(([value]) => value === S.familyRole)?.[2] || "👤")}</span><div class="family-self-fields"><b>${esc(selfLabel)}</b><div class="family-member-edit-grid"><label>Your name<input id="family-self-name" value="${esc(S.familySelfName || (S.familyRole === "custom" ? S.familyCustomName : ""))}" maxlength="60" placeholder="Enter your name"></label><label>Age<input id="family-self-age" type="number" min="0" max="120" value="${esc(S.familySelfAge || "")}" placeholder="Age"></label><label class="family-photo-upload">Upload or change photo<input id="family-self-photo" type="file" accept="image/*"></label></div></div></div></section>
+          <section class="family-section family-setup-step" id="family-selection-step"><h2>Choose your family members</h2><div class="family-profile-grid">${familyRelations.filter(([value]) => value !== S.familyRole).map(([value,label,icon]) => `<button class="family-role-card family-pick-card ${selectedRelations.has(value) ? "selected" : ""}" type="button" data-family-pick="${value}" aria-pressed="${selectedRelations.has(value)}"><span>${icon}</span><b>${selectedRelations.has(value) ? "Added " : "Add "}${label}</b>${selectedRelations.has(value) ? "<small>Selected</small>" : ""}</button>`).join("")}${S.familyRole !== "custom" ? `<button class="family-role-card family-pick-card family-custom-card ${customMembers.length ? "selected" : ""}" type="button" id="toggle-custom-family" aria-expanded="false"><span>＋</span><b>${customMembers.length ? "Edit your own member" : "Add your own member"}</b></button>` : ""}</div>
+          <form class="family-custom-form" id="family-custom-form" hidden><label>Member name<input name="name" required maxlength="60" placeholder="Enter their name"></label><label>Age<input name="age" type="number" min="0" max="120" placeholder="Age"></label><button class="btn-sm btn-sec" type="submit">Add member</button></form>
+          <div class="family-added-list" id="family-added-list" aria-live="polite"></div>
+          <button class="btn-sm btn-pri family-confirm" id="confirm-family-selection" type="button">Save family</button></section>`;
+        el.querySelector("#change-family-self").addEventListener("click", () => { S.familySelfName = el.querySelector("#family-self-name").value.trim(); S.familySelfAge = el.querySelector("#family-self-age").value; if (S.familyRole === "custom" && S.familySelfName) S.familyCustomName = S.familySelfName; S.familyRole = ""; save(); renderFamilyPage(); el.scrollIntoView({ behavior: "smooth", block: "start" }); });
+        const details = el.querySelector("#family-added-list");
+        const allDrafts = () => [...selectedRelations].map((relation) => {
+          let member = memberDrafts.get(relation);
+          if (!member) {
+            member = { id: crypto.randomUUID(), relation, name: familyRelations.find(([value]) => value === relation)?.[1] || relation, age: "", photo: "", records: [] };
+            memberDrafts.set(relation, member);
+          }
+          return member;
+        }).concat(customMembers);
+        const renderDrafts = () => {
+          details.innerHTML = allDrafts().map((member) => {
+            const relation = familyRelations.find(([value]) => value === member.relation);
+            const avatar = member.photo ? `<img src="${esc(member.photo)}" alt="">` : (relation?.[2] || "👤");
+            return `<article class="family-added-item family-edit-item" data-family-draft="${esc(member.relation)}"><span class="family-avatar">${avatar}</span><div class="family-member-edit"><b data-family-live-name>${esc(member.name || relation?.[1] || "Family member")}</b><small>${esc(relation?.[1] || "Your own member")}</small><div class="family-member-edit-grid"><label>Full name<input data-family-name value="${esc(member.name || "")}" maxlength="60" placeholder="Enter their name"></label><label>Age<input data-family-age type="number" min="0" max="120" value="${esc(member.age || "")}" placeholder="Age"></label><label class="family-photo-upload">Upload or change photo<input data-family-photo type="file" accept="image/*"></label></div></div><div class="family-member-actions"><button class="btn-sm btn-sec" type="button" data-rename-family>Rename</button><button class="btn-sm btn-sec" type="button" data-remove-family="${esc(member.relation)}">Remove</button></div></article>`;
+          }).join("") || `<p class="family-empty">Select a family member above to add their profile details here.</p>`;
+          details.querySelectorAll(".family-edit-item").forEach((row) => {
+            const relation = row.dataset.familyDraft;
+            const member = relation === "custom" ? customMembers[0] : memberDrafts.get(relation);
+            row.querySelector("[data-family-name]").addEventListener("input", (event) => { member.name = event.target.value; row.querySelector("[data-family-live-name]").textContent = event.target.value || "Family member"; });
+            row.querySelector("[data-family-age]").addEventListener("input", (event) => { member.age = event.target.value; });
+            row.querySelector("[data-rename-family]").addEventListener("click", () => { const field = row.querySelector("[data-family-name]"); field.focus(); field.select(); });
+            row.querySelector("[data-family-photo]").addEventListener("change", async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) { notify("Choose an image under 8 MB.", true); event.target.value = ""; return; }
+              try {
+                const bitmap = await createImageBitmap(file);
+                const scale = Math.min(1, 240 / Math.max(bitmap.width, bitmap.height));
+                const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+                canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+                if (!blob) throw new Error("Image could not be prepared");
+                const photo = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+                member.photo = String(photo); row.querySelector(".family-avatar").innerHTML = `<img src="${esc(member.photo)}" alt="">`;
+              } catch (_) { notify("That photo could not be loaded. Choose another image.", true); }
+            });
+            row.querySelector("[data-remove-family]").addEventListener("click", () => {
+              if (relation === "custom") customMembers.splice(0, customMembers.length);
+              else { selectedRelations.delete(relation); memberDrafts.set(relation, member); const card = el.querySelector(`[data-family-pick="${relation}"]`); if (card) { card.classList.remove("selected"); card.setAttribute("aria-pressed", "false"); card.querySelector("b").textContent = `Add ${familyRelations.find(([value]) => value === relation)?.[1]}`; card.querySelector("small")?.remove(); } }
+              if (relation === "custom") { const customCard = el.querySelector("#toggle-custom-family"); customCard?.classList.remove("selected"); if (customCard) customCard.querySelector("b").textContent = "Add your own member"; }
+              renderDrafts();
+            });
+          });
+        };
+        renderDrafts();
+        el.querySelectorAll("[data-family-pick]").forEach((button) => button.addEventListener("click", () => {
+          const relation = button.dataset.familyPick;
+          if (selectedRelations.has(relation)) selectedRelations.delete(relation); else selectedRelations.add(relation);
+          button.classList.toggle("selected", selectedRelations.has(relation)); button.setAttribute("aria-pressed", String(selectedRelations.has(relation)));
+          const relationLabel = familyRelations.find(([value]) => value === relation)?.[1] || "member";
+          button.querySelector("b").textContent = `${selectedRelations.has(relation) ? "Added " : "Add "}${relationLabel}`;
+          button.querySelector("small")?.remove();
+          if (selectedRelations.has(relation)) button.insertAdjacentHTML("beforeend", "<small>Selected</small>");
+          renderDrafts();
+        }));
+        const customToggle = el.querySelector("#toggle-custom-family");
+        const customForm = el.querySelector("#family-custom-form");
+        customToggle?.addEventListener("click", () => { if (customMembers.length) { customForm.hidden = !customForm.hidden; customToggle.setAttribute("aria-expanded", String(!customForm.hidden)); customForm.elements.name.value = customMembers[0].name; customForm.elements.age.value = customMembers[0].age || ""; customForm.querySelector("button[type=submit]").textContent = "Update member"; } else { customForm.hidden = !customForm.hidden; customToggle.setAttribute("aria-expanded", String(!customForm.hidden)); customForm.querySelector("button[type=submit]").textContent = "Add member"; } if (!customForm.hidden) customForm.elements.name.focus(); });
+        customForm.addEventListener("submit", (event) => {
+          event.preventDefault(); const name = customForm.elements.name.value.trim(); if (!name) return;
+          if (customMembers.length) { customMembers[0].name = name; customMembers[0].age = customForm.elements.age.value; }
+          else customMembers.push({ id: crypto.randomUUID(), relation: "custom", name, age: customForm.elements.age.value, photo: "", records: [] });
+          customForm.hidden = true; customToggle.classList.add("selected"); customToggle.setAttribute("aria-expanded", "false"); customToggle.querySelector("b").textContent = "Edit your own member"; renderDrafts();
+        });
+        const selfName = el.querySelector("#family-self-name");
+        const selfAge = el.querySelector("#family-self-age");
+        el.querySelector("#change-family-self").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); el.querySelector("#change-family-self").click(); } });
+        const saveSelfPhoto = el.querySelector("#family-self-photo");
+        saveSelfPhoto.addEventListener("change", async (event) => {
+          const file = event.target.files?.[0]; if (!file) return;
+          if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) { notify("Choose an image under 8 MB.", true); event.target.value = ""; return; }
+          try {
+            const bitmap = await createImageBitmap(file); const scale = Math.min(1, 240 / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale)); canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height); bitmap.close();
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78)); if (!blob) throw new Error("Image could not be prepared");
+            const photo = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
+            S.familySelfPhoto = String(photo); el.querySelector(".family-self-row .family-avatar").innerHTML = `<img src="${esc(S.familySelfPhoto)}" alt="">`;
+          } catch (_) { notify("That photo could not be loaded. Choose another image.", true); }
+        });
+        el.querySelector("#confirm-family-selection").addEventListener("click", () => {
+          S.familySelfName = selfName.value.trim(); S.familySelfAge = selfAge.value;
+          if (S.familyRole === "custom" && S.familySelfName) S.familyCustomName = S.familySelfName;
+          const drafts = allDrafts();
+          const unnamed = drafts.find((member) => !member.name.trim());
+          if (unnamed) {
+            notify("Add a name for each selected family profile before saving.", true);
+            details.querySelector(`[data-family-draft="${unnamed.relation}"] [data-family-name]`)?.focus();
+            return;
+          }
+          const removedWithReports = S.familyMembers.filter((savedMember) => savedMember.records?.length && !drafts.some((draft) => draft.id === savedMember.id));
+          if (removedWithReports.length && !window.confirm(`Removing ${removedWithReports.map((item) => item.name || "a family member").join(", ")} will also delete their saved health reports. Continue?`)) return;
+          S.familyMembers = drafts.map((member) => ({ ...member, name: member.name.trim() }));
+          S.familySelectedMemberId = S.familyMembers[0]?.id || "";
+          if (!save()) return;
+          switchPage("family-records");
+          notify("Family saved. Choose a member to view or add their health reports.");
+        });
+      }
+
+      function renderFamilyRecordsPage() {
+        const el = $("#page-family-records-content");
+        if (!el) return;
+        const members = S.familyMembers || [];
+        if (!S.familyRole || !members.length) {
+          el.innerHTML = `<header class="feature-page-head"><div><span class="body-check-eyebrow">FAMILY HEALTH</span><h1>Family health records</h1><p>Save your family profiles first. Each member’s reports will be stored in their own section.</p></div></header><section class="family-section family-records-empty"><p>No family profiles are saved yet.</p><button class="btn-sm btn-pri" type="button" id="family-records-setup">Set up family</button></section>`;
+          el.querySelector("#family-records-setup").onclick = () => switchPage("family");
+          return;
+        }
+        let member = members.find((item) => item.id === S.familySelectedMemberId) || members[0];
+        S.familySelectedMemberId = member.id;
+        const relationLabel = familyRelations.find(([value]) => value === member.relation)?.[1] || "Family member";
+        const avatar = member.photo ? `<img src="${esc(member.photo)}" alt="">` : (familyRelations.find(([value]) => value === member.relation)?.[2] || "👤");
+        const records = [...(member.records || [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        el.innerHTML = `<header class="feature-page-head family-records-head"><div><span class="body-check-eyebrow">SEPARATE FAMILY PROFILES</span><h1>Family health records</h1><p>Each person’s reports stay with their profile and remain separate from your medical records.</p></div><button class="btn-sm btn-sec" type="button" id="edit-family-profiles">Edit family</button></header>
+          <section class="family-section family-records-members"><h2>Choose a family member</h2><div class="family-record-member-list">${members.map((item) => { const itemRelation = familyRelations.find(([value]) => value === item.relation); const itemAvatar = item.photo ? `<img src="${esc(item.photo)}" alt="">` : (itemRelation?.[2] || "👤"); return `<button type="button" class="family-record-member${item.id === member.id ? " selected" : ""}" data-family-record-member="${esc(item.id)}" aria-pressed="${item.id === member.id}"><span class="family-avatar">${itemAvatar}</span><span><b>${esc(item.name || itemRelation?.[1] || "Family member")}</b><small>${esc(itemRelation?.[1] || "Family member")} · ${(item.records || []).length} ${(item.records || []).length === 1 ? "report" : "reports"}</small></span></button>`; }).join("")}</div></section>
+          <section class="family-section family-records-panel"><div class="family-records-panel-head"><div class="family-records-person"><span class="family-avatar">${avatar}</span><div><h2>${esc(member.name || relationLabel)}</h2><p>${esc(relationLabel)}${member.age ? ` · Age ${esc(member.age)}` : ""}</p></div></div><label class="btn-sm btn-pri family-report-upload" for="family-report-file">＋ Add health report</label><input id="family-report-file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" hidden></div>
+          <div class="family-health-record-list">${records.length ? records.map((record) => `<article class="family-health-record"><div class="family-health-record-meta"><span>${esc(record.recordType || "Medical report")}</span><time>${esc(record.date || "Date not shown")}</time></div><h3>${esc(record.title || record.recordType || "Health report")}</h3>${record.facility ? `<p class="family-record-source">${esc(record.facility)}${record.doctorName ? ` · ${esc(record.doctorName)}` : ""}</p>` : ""}${record.summary ? `<p>${esc(record.summary)}</p>` : ""}${record.diagnoses?.length ? `<p><b>Conditions written in report:</b> ${esc(record.diagnoses.join(" · "))}</p>` : ""}${record.bodySite ? `<p><b>Body area:</b> ${esc(record.bodySite)}</p>` : ""}${record.injuryDescription ? `<p><b>Injury:</b> ${esc(record.injuryDescription)}</p>` : ""}${record.labTests?.length ? `<details><summary>Recorded lab results (${record.labTests.length})</summary><ul>${record.labTests.map((test) => `<li><b>${esc(test.test || "Test")}:</b> ${esc([test.value, test.unit].filter(Boolean).join(" "))}${test.status ? ` · ${esc(test.status)}` : ""}</li>`).join("")}</ul></details>` : ""}${record.medicines?.length ? `<details><summary>Medicines listed (${record.medicines.length})</summary><ul>${record.medicines.map((medicine) => `<li><b>${esc(medicine.name || "Medicine")}</b>${medicine.dosage ? ` · ${esc(medicine.dosage)}` : ""}${medicine.frequency ? ` · ${esc(medicine.frequency)}` : ""}</li>`).join("")}</ul></details>` : ""}${record.verbatimTranscription ? `<details><summary>View extracted report text</summary><pre>${esc(record.verbatimTranscription)}</pre></details>` : ""}${record.selfCareTips?.length ? `<details><summary>Care suggestions from this report</summary><ul>${record.selfCareTips.map((tip) => `<li>${esc(tip)}</li>`).join("")}</ul></details>` : ""}<small>Report details are extracted from the uploaded document. Confirm medical instructions with the member’s clinician.</small></article>`).join("") : `<div class="family-health-record-empty"><b>No reports for ${esc(member.name || relationLabel)} yet</b><p>Add a prescription, lab report, or other health document to keep it with this member.</p></div>`}</div></section>`;
+        el.querySelector("#edit-family-profiles").onclick = () => switchPage("family");
+        el.querySelectorAll("[data-family-record-member]").forEach((button) => button.addEventListener("click", () => {
+          S.familySelectedMemberId = button.dataset.familyRecordMember;
+          save();
+          renderFamilyRecordsPage();
+        }));
+        el.querySelector("#family-report-file").addEventListener("change", (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) handleFileUpload(file, member.id);
+        });
+      }
+
       function renderHealthDetailsPage() {
         const el = $("#page-details-content");
         if (!el) return;
         const record = S.records.find((r) => r.id === S.curRecord && !isDemo(r));
         const localToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-        const medicineEntries = personalRecords().flatMap((r) =>
-          (r.medicines || []).map((medicine, index) => ({ record: r, medicine, index })),
-        );
         const daysSince = (date) => {
           const start = new Date(`${date}T12:00:00`);
           return Number.isNaN(start.getTime()) ? null : Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
@@ -1146,25 +1601,12 @@
             <div class="health-item-copy"><span class="health-source-tag">From uploaded record · ${esc(recordItem.date || "date not shown")}</span><h3>${esc(label || "Health concern")}</h3>${recordItem.bodySite ? `<p><b>Area:</b> ${esc(recordItem.bodySite)}</p>` : ""}${recordItem.cause ? `<p><b>Cause stated:</b> ${esc(recordItem.cause)}</p>` : ""}${severity ? `<p><b>Severity stated:</b> ${esc(severity)}</p>` : ""}<p><b>Started:</b> ${started ? `${esc(started)}${days === null ? "" : ` · ${days} day${days === 1 ? "" : "s"} tracked`}` : "Not stated in this upload"}</p>${isInjury ? `<div class="healing-status">${progress?.healed ? "Marked healed by you" : "In progress · based on your update"}</div><button class="btn-sm ${progress?.healed ? "btn-sec" : "btn-pri"}" type="button" data-healed="${esc(recordItem.id)}">${progress?.healed ? "Mark in progress" : "Mark as healed"}</button>` : ""}<button class="btn-sm btn-sec" type="button" data-record-open="${esc(recordItem.id)}">View full result</button></div>
           </article>`;
         }).join("");
-        const medicineCards = medicineEntries.map(({ record: r, medicine: m, index }) => {
-          const confirmed = r.medicinesConfirmed && m.userVerified && !m.needsReview && m.name && m.name.toLowerCase() !== "illegible";
-          const times = confirmed ? S.reminders.filter((x) => x.recordId === r.id && x.medicineIndex === index).map((x) => x.time) : [];
-          const schedule = [m.strength || m.dosage, m.form, m.frequency, m.timing, m.duration, m.instructions].filter(Boolean).join(" · ");
-          const source = `${r.title || r.recordType || "Prescription"}${r.date ? ` · ${r.date}` : " · date not shown"}`;
-          const status = r.confirmedByUserAt && confirmed ? "Reviewed by you" : confirmed ? "Read clearly · verify with your clinician" : "Needs review";
-          return `<article class="reminder-row medication-entry ${confirmed ? "is-confirmed" : "needs-review"}"><div class="medication-entry-head"><b>${esc(m.name && m.name.toLowerCase() !== "illegible" ? m.name : "Medicine name unclear")}</b><span class="medication-status ${confirmed ? "confirmed" : "review"}">${esc(status)}</span></div><small>${esc(schedule || "Dose, timing, or other instructions not stated in the upload.")}</small>${m.sourceText || m.rawText ? `<small class="medication-source">As written: ${esc(m.sourceText || m.rawText)}</small>` : ""}<small class="medication-source">From ${esc(source)}</small>${times.length ? `<small class="reminder-caveat">Reminder: ${esc(times.join(", "))} while Mr.Doc is open</small>` : confirmed ? `<small class="reminder-caveat">No exact clock time was stated; no time-based reminder is set.</small>` : `<button class="btn-sm btn-sec medication-review-button" type="button" data-med-review-record="${esc(r.id)}">Review this prescription</button>`}</article>`;
-        }).join("");
         const visitRecords = personalRecords()
           .slice()
           .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         const visitRecordRows = visitRecords.slice(0, 8).map((r) =>
           `<li><b>${esc(r.date || "Date not shown")}</b> · ${esc(r.recordType || "Medical record")}: ${esc(r.title || "Untitled record")}${r.facility ? ` · ${esc(r.facility)}` : ""}${r.diagnoses?.length ? `<br><span>Conditions written in record: ${esc(r.diagnoses.join(", "))}</span>` : ""}</li>`,
         ).join("");
-        const visitMedicines = visitRecords.flatMap((r) =>
-          (r.medicines || [])
-            .filter((m) => r.medicinesConfirmed && m.userVerified && !m.needsReview && m.name && m.name.toLowerCase() !== "illegible")
-            .map((m) => `<li><b>${esc(m.name)}</b>${m.strength || m.dosage ? ` · ${esc(m.strength || m.dosage)}` : ""}${[m.frequency, m.timing, m.duration].filter(Boolean).length ? ` · ${esc([m.frequency, m.timing, m.duration].filter(Boolean).join(" · "))}` : ""}<br><span>${r.confirmedByUserAt ? "Reviewed by you" : "Read clearly by OCR"} · ${esc(r.title || r.recordType || "uploaded record")}${r.date ? ` · ${esc(r.date)}` : " · date not shown"}</span></li>`),
-        ).slice(0, 12).join("");
         const visitLabs = visitRecords.flatMap((r) =>
           (r.labTests || []).filter((t) => !t.needsReview).map((t) => ({ record: r, test: t })),
         ).slice(0, 16).map(({ record: r, test: t }) =>
@@ -1176,9 +1618,8 @@
             ${S.profile?.name ? `<p><b>Profile name:</b> ${esc(S.profile.name)}</p>` : ""}
             ${S.profile?.abhaNumber ? `<p><b>ABHA number (saved locally, unverified):</b> ${esc(S.profile.abhaNumber)}</p>` : ""}
             <h3>Recent uploaded records</h3>${visitRecordRows ? `<ul>${visitRecordRows}</ul>` : `<p>No uploaded records yet.</p>`}
-            <h3>Medicines read clearly or reviewed from prescriptions</h3>${visitMedicines ? `<ul>${visitMedicines}</ul>` : `<p>No confirmed medicine details are available in the uploaded records.</p>`}
             <h3>Recorded lab results</h3>${visitLabs ? `<ul>${visitLabs}</ul>` : `<p>No lab results are available in the uploaded records.</p>`}
-            <p class="doctor-visit-summary-note">This is an automatically assembled record summary, not a diagnosis or treatment plan. Medicines listed here may not be current; confirm them with your clinician.</p>
+            <p class="doctor-visit-summary-note">This is an automatically assembled record summary, not a diagnosis or treatment plan. Confirm important details with your clinician.</p>
           </div>
         </section>`;
         el.innerHTML = `<header class="health-details-header"><h1 class="page-title">Health details &amp; progress</h1><p class="page-desc">A place to understand what your records say and keep your own progress notes. Document findings are shown separately from details you add.</p></header>
@@ -1187,7 +1628,6 @@
             <div class="health-items-list">${itemCards || `<p class="empty-health-tracker">No injury or condition details found in your uploaded records yet.</p>`}</div>
           </section>
           ${visitSummaryHtml}
-          <section class="health-reminders-section"><div><h2>Medicines from uploaded prescriptions</h2><p>Each entry shows whether the OCR read it clearly or it still needs review. Only confirmed medicines are used for reminders.</p></div>${medicineCards || `<p class="empty-health-tracker">No medicine details found in your uploaded records yet.</p>`}</section>
           <p class="health-safety-note">Mr.Doc helps organize information; it cannot confirm a diagnosis, judge injury severity, or replace your clinician. For urgent symptoms or a serious injury, contact local medical services.</p>`;
         $("#details-view-record")?.addEventListener("click", () => switchPage("records"));
         $("#details-go-records")?.addEventListener("click", () => switchPage("records"));
@@ -1202,13 +1642,6 @@
           item.healed = !item.healed; item.healedAt = item.healed ? new Date().toISOString() : ""; save(); renderHealthDetailsPage();
         }));
         el.querySelectorAll("[data-record-open]").forEach((button) => button.addEventListener("click", () => { S.curRecord = button.dataset.recordOpen; save(); switchPage("records"); }));
-        el.querySelectorAll("[data-med-review-record]").forEach((button) => button.addEventListener("click", () => {
-          S.curRecord = button.dataset.medReviewRecord;
-          save();
-          switchPage("records");
-          const reviewDisclosure = $("#page-records-content .ocr-correction-disclosure");
-          if (reviewDisclosure) reviewDisclosure.open = true;
-        }));
         $("#print-visit-summary")?.addEventListener("click", () => {
           document.body.classList.add("printing-visit-summary");
           window.print();
@@ -1282,56 +1715,266 @@
         const el = $("#page-body-content");
         if (!el) return;
         const records = personalRecords().filter((record) => hasDocumentedBodySite(record) || record.diagnoses?.length || record.injuryDescription);
-        const markers = records.filter(hasDocumentedBodySite).map((record, index) => {
-          const location = bodyLocation(record);
-          const frontX = bodyMarkerX(record, 0);
-          const sideX = bodyMarkerX(record, 0.5);
-          const backX = bodyMarkerX(record, 1);
-          return `<button class="full-body-marker" style="--front-x:${frontX}%;--side-x:${sideX}%;--back-x:${backX}%;--marker-y:${location.y}%;--marker-w:${location.w}%;--marker-h:${location.h}%" data-body-record="${esc(record.id)}" aria-label="${esc(record.bodySite || record.injuryDescription)} — open record"><span>${index + 1}</span></button>`;
-        }).join("");
+        const locatedRecords = records.filter(hasDocumentedBodySite);
+        const hasMarkers = locatedRecords.length > 0;
+        const threeDMarkers = locatedRecords.map((record) => ({
+          id: record.id,
+          site: `${record.bodySite || ""} ${record.injuryDescription || ""}`.trim(),
+          y: bodyLocation(record).y,
+        }));
         const cards = records.map((record) => `<article class="body-finding-card">
           ${anatomyImage(record)}
           <div><span class="health-source-tag">${esc(tr("recordSource"))} · ${esc(record.date || "—")}</span><h3>${esc(record.injuryDescription || record.diagnoses?.join(" · ") || record.title || "Health record")}</h3><p>${esc(record.bodySite || tr("locationUnknown"))}</p><button class="btn-sm btn-sec" data-body-record="${esc(record.id)}" type="button">${esc(tr("openRecord"))}</button></div>
         </article>`).join("");
         el.innerHTML = `<header class="body-check-header"><div><span class="body-check-eyebrow">${esc(tr("myHealth"))}</span><h1>${esc(tr("bodyTitle"))}</h1><p>${esc(tr("bodyIntro"))}</p></div><button class="btn-sm btn-sec" type="button" data-go-health="me">← ${esc(tr("myHealth"))}</button></header>
           <section class="full-body-overview" aria-labelledby="full-body-overview-title">
-            <div class="body-viewer-toolbar"><div><h2 id="full-body-overview-title">${esc(tr("bodyTitle"))}</h2><p>${esc(tr("rotateHint"))}</p></div><div class="body-view-buttons" role="group" aria-label="Choose body view"><button type="button" data-body-view="front" class="on" aria-pressed="true">${esc(tr("front"))}</button><button type="button" data-body-view="side" aria-pressed="false">${esc(tr("side"))}</button><button type="button" data-body-view="back" aria-pressed="false">${esc(tr("back"))}</button></div></div>
-            <div class="full-body-viewport view-front" id="full-body-viewport"><div class="full-body-figure"><img src="assets/anatomy/full-body-front.jpg" alt="Full body front view; numbered markers show health areas recorded in reports">${markers}${markers ? "" : `<p class="body-view-empty">${esc(tr("noBody"))}</p>`}</div>${markers ? `<div class="body-marker-key">${records.filter(hasDocumentedBodySite).map((record, index) => `<button type="button" data-body-record="${esc(record.id)}"><span>${index + 1}</span>${esc(record.bodySite || record.injuryDescription)}</button>`).join("")}</div>` : ""}</div>
+            <div class="body-viewer-toolbar"><div><h2 id="full-body-overview-title">3D body</h2><p id="anatomy-view-hint">Drag to rotate · scroll or pinch to zoom</p></div><div class="anatomy-controls"><div class="anatomy-view-switch" role="group" aria-label="Choose anatomy view"><button type="button" class="on" data-anatomy-view="body" aria-pressed="true">3D</button><button type="button" data-anatomy-view="bones" aria-pressed="false">Bones</button></div><button type="button" class="anatomy-reset" data-body-reset aria-label="${esc(tr("resetView"))}" title="${esc(tr("resetView"))}">↺</button></div></div>
+            <div class="full-body-viewport" id="full-body-viewport"><div class="body3d-stage" id="body3d-stage">
+              <div class="body3d-layer" id="body3d-layer"><canvas id="body3d-canvas" tabindex="0" aria-label="Interactive 3D body. Drag to rotate; scroll or pinch to zoom."></canvas><div class="body-part-labels"><svg class="body-label-connectors"><g fill="none" stroke="currentColor" stroke-width="1.5">${["head","shoulder","chest","arm","hand","abdomen","hip","thigh","knee","leg","foot"].map((name) => `<line data-anatomy-line="${name}" />`).join("")}</g></svg><span data-anatomy-label="head" class="label-left part-head">Head</span><span data-anatomy-label="shoulder" class="label-left part-shoulder">Shoulder</span><span data-anatomy-label="chest" class="label-right part-chest">Chest</span><span data-anatomy-label="arm" class="label-left part-arm">Arm</span><span data-anatomy-label="hand" class="label-left part-hand">Hand</span><span data-anatomy-label="abdomen" class="label-right part-abdomen">Abdomen</span><span data-anatomy-label="hip" class="label-left part-hip">Hip</span><span data-anatomy-label="thigh" class="label-right part-thigh">Thigh</span><span data-anatomy-label="knee" class="label-left part-knee">Knee</span><span data-anatomy-label="leg" class="label-right part-leg">Lower leg</span><span data-anatomy-label="foot" class="label-left part-foot">Foot</span></div><p class="body3d-status" id="body3d-status" role="status" aria-live="polite">Loading 3D anatomy…</p></div>
+              <div class="body3d-layer" id="bones3d-layer" hidden><canvas id="bones3d-canvas" tabindex="0" aria-label="Interactive labeled bones model. Drag to rotate; scroll or pinch to zoom."></canvas><div class="body-part-labels"><svg class="body-label-connectors"><g fill="none" stroke="currentColor" stroke-width="1.5">${["skull","clavicle","chest-bones","spine","humerus","forearm","hand-bones","pelvis","femur","patella","tibia","foot-bones"].map((name) => `<line data-anatomy-line="${name}" />`).join("")}</g></svg><span data-anatomy-label="skull" class="label-left bone-skull">Skull</span><span data-anatomy-label="clavicle" class="label-left bone-clavicle">Clavicle &amp; scapula</span><span data-anatomy-label="chest-bones" class="label-right bone-chest">Sternum &amp; ribs</span><span data-anatomy-label="spine" class="label-right bone-spine">Vertebrae</span><span data-anatomy-label="humerus" class="label-left bone-humerus">Humerus</span><span data-anatomy-label="forearm" class="label-left bone-forearm">Radius &amp; ulna</span><span data-anatomy-label="hand-bones" class="label-left bone-hand">Carpals · metacarpals · phalanges</span><span data-anatomy-label="pelvis" class="label-left bone-pelvis">Pelvis</span><span data-anatomy-label="femur" class="label-right bone-femur">Femur</span><span data-anatomy-label="patella" class="label-left bone-patella">Patella</span><span data-anatomy-label="tibia" class="label-right bone-tibia">Tibia &amp; fibula</span><span data-anatomy-label="foot-bones" class="label-left bone-foot">Tarsals · metatarsals · phalanges</span></div><p class="body3d-status" id="bones3d-status" role="status" aria-live="polite">Loading bones…</p></div>
+            </div>${hasMarkers ? `<div class="body-marker-key">${locatedRecords.map((record, index) => `<button type="button" data-body-record="${esc(record.id)}"><span>${index + 1}</span>${esc(record.bodySite || record.injuryDescription)}</button>`).join("")}</div>` : ""}<p class="bone-model-note">Anatomy and bone names are illustrative. They do not identify an injury or diagnosis.</p></div>
+          </section>
             ${records.some((record) => !hasDocumentedBodySite(record)) ? `<p class="systemic-condition-note"><span></span>${esc(tr("wholeBody"))}: ${esc(records.filter((record) => !hasDocumentedBodySite(record)).flatMap((record) => record.diagnoses || []).join(" · ") || tr("locationUnknown"))}</p>` : ""}
           </section>
           <section class="body-findings"><h2>${esc(tr("details"))}</h2>${cards || `<p class="body-empty">${esc(tr("noBody"))}</p>`}</section>`;
-        el.querySelectorAll("[data-body-view]").forEach((button) => button.onclick = () => {
-          el.querySelectorAll("[data-body-view]").forEach((item) => { item.classList.toggle("on", item === button); item.setAttribute("aria-pressed", String(item === button)); });
-          const viewport = el.querySelector("#full-body-viewport");
-          viewport.className = `full-body-viewport view-${button.dataset.bodyView}`;
-          const viewImage = viewport.querySelector("img");
-          viewImage.src = `assets/anatomy/full-body-${button.dataset.bodyView}.jpg`;
-          viewImage.alt = `Full body ${button.dataset.bodyView} view; numbered markers show health areas recorded in reports`;
+        window.MrDocAnatomy?.mount({
+          canvas: el.querySelector("#body3d-canvas"),
+          status: el.querySelector("#body3d-status"),
+          modelUrl: "assets/anatomy/human-xray-preview.glb",
+          modelPart: "body",
+          markers: threeDMarkers,
+          onRecord: (recordId) => {
+            S.curRecord = recordId;
+            save();
+            switchPage("records");
+          },
         });
+        window.MrDocAnatomy?.mount({ canvas: el.querySelector("#bones3d-canvas"), status: el.querySelector("#bones3d-status"), modelUrl: "assets/anatomy/human-xray-preview.glb", modelPart: "bones" });
+        el.querySelectorAll("[data-anatomy-view]").forEach((button) => button.addEventListener("click", () => {
+          const showBones = button.dataset.anatomyView === "bones";
+          el.querySelectorAll("[data-anatomy-view]").forEach((choice) => { const active = choice === button; choice.classList.toggle("on", active); choice.setAttribute("aria-pressed", String(active)); });
+          el.querySelector("#body3d-layer").hidden = showBones;
+          el.querySelector("#bones3d-layer").hidden = !showBones;
+          el.querySelector("#full-body-overview-title").textContent = showBones ? "Bones" : "3D body";
+          el.querySelector("#anatomy-view-hint").textContent = showBones ? "Bone names are labeled on the model · drag to rotate" : "Body parts are labeled on the model · drag to rotate";
+          window.MrDocAnatomy?.resize(showBones ? el.querySelector("#bones3d-canvas") : el.querySelector("#body3d-canvas"));
+        }));
         el.querySelectorAll("[data-body-record]").forEach((button) => button.onclick = () => {
           S.curRecord = button.dataset.bodyRecord;
           save();
           switchPage("records");
         });
+        el.querySelector("[data-body-reset]")?.addEventListener("click", () => window.MrDocAnatomy?.reset(el.querySelector("#bones3d-layer").hidden ? el.querySelector("#body3d-canvas") : el.querySelector("#bones3d-canvas")));
         el.querySelector("[data-go-health]")?.addEventListener("click", () => switchPage("me", { fromBack: true }));
       }
 
+      function setupReminderTimeChoices(value = "") {
+        const hourSelect = $("#medicine-reminder-hour");
+        const minuteSelect = $("#medicine-reminder-minute");
+        const periodSelect = $("#medicine-reminder-period");
+        if (!hourSelect || !minuteSelect || !periodSelect) return;
+        if (hourSelect.options.length === 1) {
+          for (let hour = 1; hour <= 12; hour++) hourSelect.add(new Option(String(hour).padStart(2, "0"), String(hour)));
+          for (let minute = 0; minute < 60; minute++) minuteSelect.add(new Option(String(minute).padStart(2, "0"), String(minute).padStart(2, "0")));
+        }
+        const match = /^(\d{2}):(\d{2})$/.exec(value);
+        if (!match) {
+          hourSelect.value = "";
+          minuteSelect.value = "";
+          periodSelect.value = "";
+          return;
+        }
+        const hour24 = Number(match[1]);
+        hourSelect.value = String(hour24 % 12 || 12);
+        minuteSelect.value = match[2];
+        periodSelect.value = hour24 >= 12 ? "PM" : "AM";
+      }
+      function selectedReminderTime() {
+        const hour = Number($("#medicine-reminder-hour")?.value);
+        const minute = $("#medicine-reminder-minute")?.value;
+        const period = $("#medicine-reminder-period")?.value;
+        if (!hour || !/^\d{2}$/.test(minute || "") || !["AM", "PM"].includes(period)) return "";
+        const hour24 = (hour % 12) + (period === "PM" ? 12 : 0);
+        return `${String(hour24).padStart(2, "0")}:${minute}`;
+      }
+      function reminderStatus(reminder, now = new Date()) {
+        const day = now.toLocaleDateString("en-CA");
+        if (reminder.takenDates?.includes(reminder.scheduledAt ? "once" : day)) return "Taken";
+        if (reminder.scheduledAt) return Date.parse(reminder.scheduledAt) <= now.getTime() ? "Not taken" : "Upcoming";
+        const inRange = (!reminder.startDate || day >= reminder.startDate) && (!reminder.endDate || day <= reminder.endDate);
+        const onDay = !reminder.days?.length || reminder.days.includes(now.getDay());
+        if (!inRange || !onDay) return "Upcoming";
+        const [hour, minute] = (reminder.time || "00:00").split(":").map(Number);
+        return now.getHours() * 60 + now.getMinutes() >= hour * 60 + minute ? "Not taken" : "Upcoming";
+      }
+      function markReminderTaken(reminderId) {
+        const reminder = S.reminders.find((item) => item.id === reminderId);
+        if (!reminder || reminder.type === "care") return;
+        const key = reminder.scheduledAt ? "once" : new Date().toLocaleDateString("en-CA");
+        reminder.takenDates = [...new Set([...(reminder.takenDates || []), key])];
+        save();
+        renderReminderCenter();
+        if (activePage === "details") renderHealthDetailsPage();
+        if (activePage === "records") renderRecordsPage();
+        notify("Marked as taken.");
+      }
       function checkMedicineReminders() {
         if (!Array.isArray(S.reminders)) return;
         const now = new Date();
         const day = now.toLocaleDateString("en-CA");
         const time = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
         for (const reminder of S.reminders) {
-          if (reminder.time !== time || reminder.lastFired === day) continue;
+          const dueAt = reminder.scheduledAt ? Date.parse(reminder.scheduledAt) : NaN;
+          const oneTimeDue = Number.isFinite(dueAt) && dueAt <= now.getTime() && !reminder.firedAt;
+          const withinDateRange = (!reminder.startDate || day >= reminder.startDate) && (!reminder.endDate || day <= reminder.endDate);
+          const selectedDay = !Array.isArray(reminder.days) || !reminder.days.length || reminder.days.includes(now.getDay());
+          const dailyDue = !reminder.scheduledAt && withinDateRange && selectedDay && reminder.time === time && reminder.lastFired !== day;
+          if (!oneTimeDue && !dailyDue) continue;
           const record = S.records.find((r) => r.id === reminder.recordId && r.medicinesConfirmed);
-          const med = record?.medicines?.[reminder.medicineIndex];
-          if (!med) continue;
-          reminder.lastFired = day;
+          const careRecord = reminder.type === "care" ? S.records.find((r) => r.id === reminder.recordId && !isDemo(r) && !isUnavailable(r)) : null;
+          const med = reminder.type === "care" ? null : record?.medicines?.[reminder.medicineIndex];
+          if (reminder.type === "care" ? ![...(careRecord?.selfCareTips || []), ...(careRecord?.translations?.[S.lang]?.selfCareTips || [])].includes(reminder.message) : !med) continue;
+          if (oneTimeDue) reminder.firedAt = now.toISOString();
+          else reminder.lastFired = day;
           save();
-          notify(`Medicine reminder: ${med.name || "Confirmed medicine"} — follow your prescription instructions.`);
+          const medicineName = med?.name || "Confirmed medicine";
+          const message = reminder.type === "care"
+            ? `Care suggestion from your report: ${reminder.message}`
+            : ({
+                en: `It’s time for your scheduled medicine reminder: ${medicineName}. Follow the prescription instructions.`,
+                hi: `आपकी दवा की तय याद दिलाने का समय है: ${medicineName}। पर्चे के निर्देशों का पालन करें।`,
+                te: `మీరు నిర్ణయించిన మందు గుర్తు సమయం: ${medicineName}. ప్రిస్క్రిప్షన్ సూచనలను పాటించండి.`,
+                ta: `நீங்கள் திட்டமிட்ட மருந்து நினைவூட்டல் நேரம்: ${medicineName}. மருந்துச் சீட்டு வழிமுறைகளைப் பின்பற்றுங்கள்.`,
+              })[S.lang];
+          notify(message);
+          queueReminderPopup(reminder, message, med);
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(reminder.type === "care" ? "Mr.Doc · Care suggestion" : "Mr.Doc · Medicine reminder", { body: message, tag: `${reminder.recordId}-${reminder.medicineIndex}-${reminder.time}` });
+          }
+          if (voice) speakText(message);
         }
       }
-      setInterval(checkMedicineReminders, 15000);
+      const pendingReminderPopups = [];
+      let reminderPopupShowing = false;
+      function presentNextReminderPopup() {
+        if (reminderPopupShowing || !pendingReminderPopups.length) return;
+        const alert = pendingReminderPopups.shift();
+        const overlay = $("#medicine-alert-overlay");
+        overlay.dataset.recordId = alert.recordId;
+        overlay.dataset.medicineIndex = alert.medicine ? String(alert.medicineIndex) : "";
+        overlay.dataset.type = alert.type;
+        overlay.dataset.reminderId = alert.reminderId || "";
+        $("#medicine-alert-title").textContent = alert.type === "care" ? "Care suggestion reminder" : "It’s time for your medicine";
+        $("#medicine-alert-message").textContent = alert.body;
+        const prescription = $("#medicine-alert-prescription");
+        const written = alert.medicine ? [alert.medicine.sourceText || alert.medicine.rawText, [alert.medicine.strength || alert.medicine.dosage, alert.medicine.frequency, alert.medicine.timing, alert.medicine.duration, alert.medicine.instructions].filter(Boolean).join(" · ")].filter(Boolean) : [];
+        prescription.textContent = written.length ? `From your reviewed prescription: ${written.join(" · ")}` : "";
+        prescription.hidden = !written.length;
+        $("#medicine-alert-open-record").hidden = !alert.medicine;
+        $("#medicine-alert-taken").hidden = !alert.medicine;
+        overlay.hidden = false;
+        reminderPopupShowing = true;
+        $("#medicine-alert-dismiss").focus();
+      }
+      function queueReminderPopup(reminder, body, medicine) {
+        pendingReminderPopups.push({ type: reminder.type === "care" ? "care" : "medicine", reminderId: reminder.id, recordId: reminder.recordId, medicineIndex: reminder.medicineIndex, body, medicine });
+        presentNextReminderPopup();
+      }
+      function dismissReminderPopup(openRecord = false) {
+        const overlay = $("#medicine-alert-overlay");
+        const recordId = overlay.dataset.recordId;
+        const isMedicine = overlay.dataset.type === "medicine";
+        const medicineIndex = Number(overlay.dataset.medicineIndex);
+        overlay.hidden = true;
+        reminderPopupShowing = false;
+        if (openRecord && isMedicine) {
+          S.curRecord = recordId;
+          save();
+          switchPage("records");
+        }
+        setTimeout(presentNextReminderPopup, openRecord ? 350 : 80);
+      }
+      function openMedicineReminderSetup(recordId, medicineIndex) {
+        const record = S.records.find((item) => item.id === recordId);
+        const medicine = record?.medicines?.[medicineIndex];
+        if (!record?.medicinesConfirmed || !medicine?.userVerified || medicine.needsReview || !medicine.name || medicine.name.toLowerCase() === "illegible") {
+          notify("Review and confirm this prescription before setting a reminder.", true);
+          return;
+        }
+        const setup = $("#medicine-reminder-setup");
+        const overlay = $("#medicine-reminder-setup-overlay");
+        const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const existing = S.reminders.find((item) => item.recordId === recordId && item.medicineIndex === medicineIndex && !item.scheduledAt);
+        setup.dataset.recordId = recordId;
+        setup.dataset.medicineIndex = String(medicineIndex);
+        setup.dataset.type = "medicine";
+        $("#medicine-reminder-setup-title").textContent = "Set medicine reminder";
+        $("#medicine-reminder-safety").textContent = "Choose reminder times that match your prescription or clinician’s instructions. This reminder does not set or change your dose. Alerts run while Mr.Doc is open in this browser.";
+        $("#medicine-reminder-medicine-name").textContent = `${medicine.name}${medicine.strength || medicine.dosage ? ` · ${medicine.strength || medicine.dosage}` : ""}`;
+        $("#medicine-reminder-repeat").value = existing?.days?.length ? "weekly" : "daily";
+        $("#medicine-reminder-days").hidden = $("#medicine-reminder-repeat").value !== "weekly";
+        $("#medicine-reminder-days").querySelectorAll("input[type=checkbox]").forEach((day) => { day.checked = Boolean(existing?.days?.includes(Number(day.value))); });
+        setupReminderTimeChoices(existing?.time || "");
+        $("#medicine-reminder-start").min = today;
+        $("#medicine-reminder-start").value = existing?.startDate || today;
+        $("#medicine-reminder-end").min = $("#medicine-reminder-start").value;
+        $("#medicine-reminder-end").value = existing?.endDate || "";
+        overlay.hidden = false;
+        $("#medicine-reminder-hour").focus();
+      }
+      function openCareReminderSetup(recordId, message) {
+        const record = S.records.find((item) => item.id === recordId && !isDemo(item) && !isUnavailable(item));
+        const availableTips = [...(record?.selfCareTips || []), ...(record?.translations?.[S.lang]?.selfCareTips || [])];
+        if (!availableTips.includes(message)) return notify("This report suggestion is no longer available.", true);
+        const setup = $("#medicine-reminder-setup");
+        const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const existing = S.reminders.find((item) => item.type === "care" && item.recordId === recordId && item.message === message && !item.scheduledAt);
+        setup.dataset.type = "care";
+        setup.dataset.recordId = recordId;
+        setup.dataset.medicineIndex = "-1";
+        $("#medicine-reminder-setup-title").textContent = "Set care reminder";
+        $("#medicine-reminder-safety").textContent = "This repeats a supportive suggestion from your report, not a treatment instruction. Check with your clinician if it depends on your conditions, medicines, allergies, or diet restrictions. Alerts run while Mr.Doc is open in this browser.";
+        $("#medicine-reminder-medicine-name").textContent = message;
+        $("#medicine-reminder-repeat").value = existing?.days?.length ? "weekly" : "daily";
+        $("#medicine-reminder-days").hidden = $("#medicine-reminder-repeat").value !== "weekly";
+        $("#medicine-reminder-days").querySelectorAll("input[type=checkbox]").forEach((day) => { day.checked = Boolean(existing?.days?.includes(Number(day.value))); });
+        setupReminderTimeChoices(existing?.time || "");
+        $("#medicine-reminder-start").min = today;
+        $("#medicine-reminder-start").value = existing?.startDate || today;
+        $("#medicine-reminder-end").min = $("#medicine-reminder-start").value;
+        $("#medicine-reminder-end").value = existing?.endDate || "";
+        $("#medicine-reminder-setup-overlay").hidden = false;
+        $("#medicine-reminder-hour").focus();
+      }
+      function renderReminderCenter() {
+        const list = $("#reminders-list");
+        if (!S.reminders.length) {
+          list.innerHTML = '<div class="reminder-center-empty">No reminders yet. Add one from a reviewed prescription or a report suggestion.</div>';
+          return;
+        }
+        list.innerHTML = S.reminders.map((reminder, index) => {
+          const record = S.records.find((item) => item.id === reminder.recordId);
+          const medicine = record?.medicines?.[reminder.medicineIndex];
+          const isCare = reminder.type === "care";
+          const name = isCare ? "Care suggestion" : medicine?.name || "Medicine from saved prescription";
+          const schedule = reminder.scheduledAt
+            ? `One time · ${new Date(reminder.scheduledAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`
+            : `${Array.isArray(reminder.days) && reminder.days.length ? `Weekly · ${reminder.days.map((day) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]).join(", ")}` : "Daily"} · ${new Date(`2000-01-01T${reminder.time || "00:00"}:00`).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}${reminder.startDate ? ` · from ${reminder.startDate}` : ""}${reminder.endDate ? ` to ${reminder.endDate}` : ""}`;
+          const status = reminderStatus(reminder);
+          return `<article class="reminder-center-item" role="listitem"><div><b>${esc(name)}</b>${isCare ? `<small>${esc(reminder.message)}</small>` : ""}<small>${esc(schedule)}</small><small class="reminder-center-status status-${status.toLowerCase().replace(/\s+/g, "-")}">${esc(status)}</small></div><div class="reminder-center-actions">${status === "Not taken" && !isCare ? `<button class="btn-sm btn-pri" type="button" data-mark-reminder-taken="${esc(reminder.id)}">Mark taken</button>` : ""}<button class="btn-sm btn-sec" type="button" data-remove-saved-reminder="${index}" aria-label="Remove reminder for ${esc(name)}">Remove</button></div></article>`;
+        }).join("");
+        list.querySelectorAll("[data-remove-saved-reminder]").forEach((button) => button.addEventListener("click", () => {
+          const index = Number(button.dataset.removeSavedReminder);
+          if (!Number.isInteger(index) || index < 0 || index >= S.reminders.length) return;
+          S.reminders.splice(index, 1);
+          save();
+          renderReminderCenter();
+          renderHealthDetailsPage();
+        }));
+        list.querySelectorAll("[data-mark-reminder-taken]").forEach((button) => button.addEventListener("click", () => markReminderTaken(button.dataset.markReminderTaken)));
+      }
+      setTimeout(checkMedicineReminders, 1500);
+      setInterval(checkMedicineReminders, 5000);
 
       // 1. FULL PAGE: MEDICAL RECORDS & OCR
       function highlightClinicalMarkers(str) {
@@ -1353,6 +1996,30 @@
           .replace(/(கொலஸ்ட்ரால்)/gi, "<b>$1</b>");
       }
 
+      function fallbackReportSuggestions(record) {
+        const suggestions = [];
+        if (isUnavailable(record)) {
+          return ["Upload this report again to create a readable summary and report-specific suggestions.", "Until the report can be read, ask your clinician whether any food or nutrition guidance applies to you."];
+        }
+        const injuryText = [record?.injuryDescription, record?.bodySite].filter(Boolean).join(" ");
+        if (injuryText) {
+          suggestions.push(`This upload mentions ${injuryText}. Ask your care team which wound-care steps and warning signs apply to you.`);
+          suggestions.push("Ask whether any food or nutrition guidance is relevant to this care plan; this upload does not specify a diet.");
+        }
+        if (record?.labTests?.length) {
+          const names = record.labTests.filter((test) => !test.needsReview).slice(0, 3).map((test) => test.test).filter(Boolean);
+          suggestions.push(names.length ? `Ask your clinician to explain ${names.join(", ")} and whether any nutrition changes are appropriate for your results. Do not change your diet based on a result alone.` : "Ask your clinician whether any nutrition changes are appropriate for your results. Do not change your diet based on a result alone.");
+        }
+        if (record?.medicines?.length) {
+          suggestions.push("Check the original prescription or ask a pharmacist about any food or meal instructions. Do not infer timing that is not written there.");
+        }
+        if (!suggestions.length) {
+          suggestions.push("Ask your clinician to explain the main finding in this upload and what follow-up, if any, is needed.");
+          suggestions.push("Ask whether the report has any food or nutrition guidance for you; no diet change is inferred from the document.");
+        }
+        return suggestions.slice(0, 3);
+      }
+
       function renderRecordsPage() {
         const el = $("#page-records-content");
         if (!el) return;
@@ -1368,7 +2035,10 @@
           selected?.summary ||
           "No record selected yet.";
         const sumHtml = highlightClinicalMarkers(esc(rawSum));
-        const tips = (curR && (t.selfCareTips || curR.selfCareTips)) || [];
+        const translatedTips = Array.isArray(t.selfCareTips) ? t.selfCareTips : [];
+        const recordTips = Array.isArray(curR?.selfCareTips) ? curR.selfCareTips : [];
+        const savedTips = translatedTips.length ? translatedTips : recordTips;
+        const tips = selected && !isDemo(selected) ? (savedTips.length && !isUnavailable(selected) ? savedTips : fallbackReportSuggestions(curR || selected)) : [];
         const questions =
           (curR && (t.doctorQuestions || curR.doctorQuestions)) || [];
         const isOcrRecord =
@@ -1379,6 +2049,22 @@
           .filter(Boolean);
         const needsOcrUpdate = isOcrRecord && selected.ocrVersion < 2;
         const previewUrl = selected ? recordPreviews.get(selected.id) : "";
+        const recordProgress = selected ? S.healthItems.find((item) => item.recordId === selected.id) : null;
+        const injuryStarted = curR?.injuryStartDate || "";
+        const injuryStartTime = injuryStarted ? new Date(`${injuryStarted}T12:00:00`).getTime() : NaN;
+        const injuryDaysTracked = Number.isFinite(injuryStartTime) ? Math.max(0, Math.floor((Date.now() - injuryStartTime) / 86400000)) : null;
+        const recordInjuryOverview = selected && (curR.injuryDescription || curR.diagnoses?.length || curR.bodySite) ? `
+          <section class="record-injury-overview" aria-label="Injury or condition details from this record">
+            ${hasDocumentedBodySite(curR) ? `<div class="record-injury-visual">${anatomyImage(curR)}</div>` : ""}
+            <div class="record-injury-copy"><span class="health-source-tag">From uploaded record · ${esc(curR.date || "date not shown")}</span>
+              <h3>${esc(curR.injuryDescription || curR.diagnoses?.join(" · ") || curR.bodySite || "Health concern")}</h3>
+              ${curR.bodySite ? `<p><b>Area:</b> ${esc(curR.bodySite)}</p>` : ""}
+              ${curR.cause ? `<p><b>Cause stated:</b> ${esc(curR.cause)}</p>` : ""}
+              ${curR.documentedSeverity ? `<p><b>Severity stated:</b> ${esc(curR.documentedSeverity)}</p>` : ""}
+              <p><b>Started:</b> ${injuryStarted ? `${esc(injuryStarted)}${injuryDaysTracked === null ? "" : ` · ${injuryDaysTracked} day${injuryDaysTracked === 1 ? "" : "s"} tracked`}` : "Not stated in this upload"}</p>
+              ${curR.injuryDescription ? `<div class="healing-status">${recordProgress?.healed ? "Marked healed by you" : "In progress · based on your update"}</div><button class="btn-sm ${recordProgress?.healed ? "btn-sec" : "btn-pri"}" type="button" data-record-healed="${esc(selected.id)}">${recordProgress?.healed ? "Mark in progress" : "Mark as healed"}</button>` : ""}
+            </div>
+          </section>` : "";
         const needsDocumentReview =
           (isOcrRecord || selected?.importedFromFile) &&
           !!selected?.reviewRequired;
@@ -1521,6 +2207,8 @@
           <div>${sumHtml}</div>
         </div>
 
+        ${recordInjuryOverview}
+
         ${(curR.injuryDescription || curR.diagnoses?.length) ? `<div class="record-severity-row">${curR.documentedSeverity && ["low", "medium", "serious"].includes(curR.documentedSeverity) ? `<span class="severity-pill severity-${curR.documentedSeverity}">${curR.documentedSeverity === "serious" ? "Serious" : curR.documentedSeverity === "medium" ? "Moderate" : "Mild"} · stated in record</span>` : `<span class="severity-pill severity-not-stated">Severity not stated in record</span>`}<small>Mr.Doc shows severity only when the document states it; it does not rate danger on its own.</small></div>` : ""}
 
         ${
@@ -1546,14 +2234,19 @@
             <div class="med-row">
               ${curR.medicines
                 .map(
-                  (m) => `
+                  (m, medicineIndex) => {
+                    const reviewedForReminder = selected.medicinesConfirmed && m.userVerified && !m.needsReview && m.name && m.name.toLowerCase() !== "illegible";
+                    const existingReminders = reviewedForReminder ? S.reminders.filter((reminder) => reminder.recordId === selected.id && reminder.medicineIndex === medicineIndex) : [];
+                    return `
                 <div class="med-pill">
                   <b>${m.name || "Medicine text unclear"}</b>${m.strength || m.dosage ? ` (${m.strength || m.dosage})` : ""}<br>
                   <small style="color:var(--mut)"><b>Schedule:</b> ${m.frequency || "Not clear in image"}${m.timing ? ` • ${m.timing}` : ""} ${m.duration ? `• ${m.duration}` : ""}<br>${m.instructions ? `<b>Advice:</b> ${m.instructions}` : ""}</small>
                   ${m.sourceText ? `<div class="ocr-source-line"><b>As written:</b> ${m.sourceText}</div>` : ""}
                   ${m.needsReview ? '<small class="ocr-field-review">Please verify this entry from the original.</small>' : ""}
+                  ${reviewedForReminder ? `<div class="medicine-reminder-actions"><button class="btn-sm btn-sec" type="button" data-open-med-reminder="${esc(selected.id)}:${medicineIndex}">${existingReminders.length ? "Add or change reminder" : "＋ Add reminder"}</button>${existingReminders.length ? `<span>${existingReminders.length} reminder${existingReminders.length === 1 ? "" : "s"} saved</span>` : ""}</div>` : `<small class="reminder-caveat">Review and confirm medicine details before adding a reminder.</small>`}
                 </div>
-              `,
+              `;
+                  },
                 )
                 .join("")}
             </div>
@@ -1561,6 +2254,14 @@
         `
             : ""
         }
+
+        ${selected && !isDemo(selected) ? `
+          <section class="report-diet-guidance" aria-labelledby="report-diet-title">
+            <h3 id="report-diet-title">Diet &amp; care suggestions from this upload</h3>
+            ${tips.length ? `<ul>${tips.map((tip, tipIndex) => `<li><span>${esc(tip)}</span>${savedTips.length ? `<button type="button" class="btn-sm btn-sec" data-open-care-reminder="${tipIndex}">Remind me</button>` : ""}</li>`).join("")}</ul>` : `<p>No specific diet suggestion could be safely supported by this upload. Mr.Doc will not guess; ask your clinician for advice tailored to your health needs.</p>`}
+            <small>These suggestions are limited to the information in this report and are not a diagnosis or treatment plan.</small>
+          </section>
+        ` : ""}
 
         <!-- Diagnostic Test Results (NO reference range column) -->
         ${
@@ -1597,30 +2298,9 @@
 
         <!-- Self-Care Guidance & Doctor Questions -->
         ${
-          tips.length || questions.length
+          questions.length
             ? `
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-top:6px">
-            ${
-              tips.length
-                ? `
-              <div style="background:#f9fbfb;padding:12px;border-radius:10px;border:1px solid var(--line)">
-                <b style="font-size:13px;display:block;margin-bottom:4px">🌿 Self-Care Guidance</b>
-                <ul style="margin:0;padding-left:16px;font-size:12.5px;line-height:1.5">${tips.map((x) => `<li>${x}</li>`).join("")}</ul>
-              </div>
-            `
-                : ""
-            }
-            ${
-              questions.length
-                ? `
-              <div style="background:#f9fbfb;padding:12px;border-radius:10px;border:1px solid var(--line)">
-                <b style="font-size:13px;display:block;margin-bottom:4px">❓ Questions for Your Doctor</b>
-                <ul style="margin:0;padding-left:16px;font-size:12.5px;line-height:1.5">${questions.map((x) => `<li>${x}</li>`).join("")}</ul>
-              </div>
-            `
-                : ""
-            }
-          </div>
+          <section class="report-doctor-questions"><b>❓ Questions for your doctor</b><ul>${questions.map((question) => `<li>${esc(question)}</li>`).join("")}</ul></section>
         `
             : ""
         }
@@ -1639,6 +2319,24 @@
 
         // Wire up dropzone
         const dz = el.querySelector("#records-dropzone");
+        el.querySelectorAll("[data-open-care-reminder]").forEach((button) => button.addEventListener("click", () => {
+          const tipIndex = Number(button.dataset.openCareReminder);
+          const tip = selected?.translations?.[S.lang]?.selfCareTips?.[tipIndex] || selected?.selfCareTips?.[tipIndex];
+          if (tip) openCareReminderSetup(selected.id, tip);
+        }));
+        el.querySelectorAll("[data-open-med-reminder]").forEach((button) => button.addEventListener("click", () => {
+          const [recordId, medicineIndexText] = button.dataset.openMedReminder.split(":");
+          openMedicineReminderSetup(recordId, Number(medicineIndexText));
+        }));
+        el.querySelector("[data-record-healed]")?.addEventListener("click", (event) => {
+          const recordId = event.currentTarget.dataset.recordHealed;
+          let item = S.healthItems.find((entry) => entry.recordId === recordId);
+          if (!item) { item = { id: recordId, recordId, healed: false }; S.healthItems.push(item); }
+          item.healed = !item.healed;
+          item.healedAt = item.healed ? new Date().toISOString() : "";
+          if (!save()) return;
+          renderRecordsPage();
+        });
         $("#browse-record").onclick = () => $("#file-inp").click();
         $("#take-record").onclick = () => $("#file-take").click();
         for (const event of ["dragenter", "dragover"])
@@ -2136,6 +2834,13 @@
           )
           .slice(0, 4);
         const plain = (v) => String(v == null ? "" : v);
+        const wellness = [];
+        if (flags.length) wellness.push("Plan a clinician review for the out-of-range values shown in your reports; keep the original values and reference ranges with you.");
+        if (allDiags.length || flags.length) wellness.push("Keep regular sleep and meal times, and record any symptoms or changes to discuss at your next visit.");
+        if (/diabet|glucose|sugar/i.test(`${allDiags.join(" ")} ${flags.map((item) => item.test).join(" ")}`)) wellness.push("Choose regular balanced meals and ask your clinician what carbohydrate plan fits your medicines and test results.");
+        if (/cholesterol|lipid|triglyceride/i.test(`${allDiags.join(" ")} ${flags.map((item) => item.test).join(" ")}`)) wellness.push("Ask your clinician about a heart-friendly eating pattern and an activity level that is safe for you.");
+        if (plain(S.profile.age).trim() && Number(S.profile.age) >= 60) wellness.push("Review medicines, falls, sleep, hydration, hearing, and vision with your clinician as part of routine older-adult care.");
+        if (!wellness.length) wellness.push("Add your age and upload a report to receive record-based wellness suggestions. Mr.Doc will leave gaps blank rather than guess.");
         const initials = (n) => {
           const w = plain(n).trim().split(/\s+/).filter(Boolean);
           return w.length
@@ -2184,6 +2889,9 @@
     <nav class="profile-quick-actions" aria-label="Health profile actions">
       <button type="button" class="btn-sm btn-pri" data-go="chat">Ask Mr.Doc</button>
       <button type="button" class="btn-sm btn-sec" data-go="records">Upload or view reports</button>
+      <button type="button" class="btn-sm btn-sec" data-go="appointments">Appointments</button>
+      <button type="button" class="btn-sm btn-sec" data-go="family">My family</button>
+      <button type="button" class="btn-sm btn-sec" data-open-health-qr>My QR</button>
       <button type="button" class="btn-sm btn-sec" data-go="timeline">View timeline</button>
       <button type="button" class="btn-sm btn-sec body-check-action" data-go="body">${esc(tr("bodyCheck"))}</button>
       <button class="btn-sm btn-sec" id="reader-mode" type="button" aria-pressed="${S.readerMode}">${S.readerMode ? "Use standard text" : "Use larger text"}</button>
@@ -2221,6 +2929,11 @@
       </div>
 
       <div class="mh-col">
+        <section class="mh-card wellness-card">
+          <h3 class="mh-h">Personalised wellness guidance <small>Based on saved age and records</small></h3>
+          <ul>${wellness.slice(0, 4).map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
+          <p class="note">These are discussion and habit suggestions, not a diagnosis or treatment plan.</p>
+        </section>
         <section class="mh-card">
           <h3 class="mh-h">Recorded conditions</h3>
           ${
@@ -2322,6 +3035,7 @@
         el.querySelectorAll("[data-go]").forEach((btn) => {
           btn.onclick = () => switchPage(btn.dataset.go);
         });
+        el.querySelector("[data-open-health-qr]")?.addEventListener("click", openHealthQr);
 
         const sBtn = el.querySelector("#btn-save-prof");
         if (sBtn)
@@ -2347,7 +3061,12 @@
 
       // 6. FULL PAGE: HEALTH GUIDANCE
       function profileToolsHtml() {
-        return `<section class="mh-card"><h3 class="mh-h">ABHA health card <small>Optional</small></h3>
+        return `<section class="mh-card"><h3 class="mh-h">Notifications &amp; watch</h3>
+          <p class="note">Browser notifications can alert you while this device allows them. A real watch connection needs Apple Health, Health Connect, or the watch provider's app and account.</p>
+          <div class="profile-tool-actions"><button class="btn-sm btn-pri" id="enable-notifications" type="button">Enable notifications</button><button class="btn-sm btn-sec" id="connect-watch" type="button">${S.watchConnected ? "Watch setup noted" : "Connect a watch"}</button></div>
+          <p id="watch-status" class="note">${S.watchConnected ? "Watch setup is marked for this prototype. No wearable provider is transmitting data yet." : "No watch provider connected."}</p>
+        </section>
+        <section class="mh-card"><h3 class="mh-h">ABHA health card <small>Optional</small></h3>
           <p class="note">Save details from your own card in this browser. Scanning reads the card; it does not sign into or verify your national health account.</p>
           <details class="profile-options"><summary>Add or scan card details</summary>
             <button class="btn-sm btn-sec" type="button" id="scan-abha">Scan card photo</button>
@@ -2366,6 +3085,16 @@
       }
 
       function wireProfileTools(el) {
+        el.querySelector("#enable-notifications").onclick = async () => {
+          if (!("Notification" in window)) return notify("This browser does not support system notifications.", true);
+          const permission = await Notification.requestPermission();
+          notify(permission === "granted" ? "Notifications are enabled for reminders on this device." : "Notification permission was not enabled.", permission !== "granted");
+        };
+        el.querySelector("#connect-watch").onclick = () => {
+          S.watchConnected = true; save();
+          el.querySelector("#watch-status").textContent = "Watch setup is marked for this prototype. Connect a wearable provider API before using it for real alerts.";
+          el.querySelector("#connect-watch").textContent = "Watch setup noted";
+        };
         el.querySelector("#reader-mode").onclick = () => {
           S.readerMode = !S.readerMode;
           if (!save()) { S.readerMode = !S.readerMode; return; }
@@ -2530,6 +3259,7 @@
         }
       }
       let lastUploadFile = null;
+      let lastUploadFamilyMemberId = "";
       function readFileBase64(file) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -2538,9 +3268,12 @@
           reader.readAsDataURL(file);
         });
       }
-      async function handleFileUpload(file) {
+      async function handleFileUpload(file, familyMemberId = "") {
         if (!file) return;
         if (uploading) return notify("A report is already being read. Please wait.");
+        const familyMember = familyMemberId ? S.familyMembers.find((member) => member.id === familyMemberId) : null;
+        if (familyMemberId && !familyMember) return notify("That family profile is no longer available. Please choose a member again.", true);
+        lastUploadFamilyMemberId = familyMemberId;
         // A new selection replaces the previous retry, including an invalid selection.
         lastUploadFile = null;
         const retry = $("#upload-retry-banner"); retry.hidden = true;
@@ -2565,13 +3298,17 @@
           lastUploadFile = file; canRetry = true;
           const data = await requestJson(CONFIG.ocrEndpoint, {
             image: encoded, processedImage, mimeType: mime, language: S.lang, voice,
-            age: S.profile.age || "", gender: S.profile.gender || "", profileName: S.profile.name || "",
+            age: familyMember ? familyMember.age || "" : S.profile.age || "",
+            gender: familyMember ? familyMember.gender || "" : S.profile.gender || "",
+            profileName: familyMember ? familyMember.name || "" : S.profile.name || "",
           });
           progress.setAttribute("aria-valuenow", "100"); progress.setAttribute("aria-valuetext", "Report ready");
           bar.classList.add("complete"); await sleep(180);
           const previewUrl = mime.startsWith("image/") ? URL.createObjectURL(file) : "";
-          handleAnalyzedRecord(data.record, data.audio, previewUrl);
-          lastUploadFile = null; notify("Report added. The full result is available when you want to open it.");
+          handleAnalyzedRecord(data.record, data.audio, previewUrl, familyMemberId);
+          lastUploadFile = null;
+          lastUploadFamilyMemberId = "";
+          notify(familyMember ? `Report saved to ${familyMember.name || "this member"}'s family health records.` : "Report added. Open its card for the key details and any report-based care suggestions.");
         } catch (error) {
           if (!canRetry) lastUploadFile = null;
           $("#upload-retry-file").textContent = file.name;
@@ -2675,7 +3412,8 @@
       function syncReviewedRecordBundle(record) {
         let index = 0;
         let medicineIndex = 0;
-        (record.fhirBundle?.entry || []).forEach((entry) => {
+        const entries = record.fhirBundle?.entry || [];
+        entries.forEach((entry) => {
           const resource = entry.resource;
           if (resource?.resourceType === "MedicationRequest") {
             const medicine = record.medicines[medicineIndex++];
@@ -2701,6 +3439,16 @@
           if (test.needsReview) resource.note.push({ text: pendingNote });
           if (!resource.note.length) delete resource.note;
         });
+        while (medicineIndex < (record.medicines || []).length) {
+          const medicine = record.medicines[medicineIndex++];
+          const subject = entries.find((entry) => entry.resource?.resourceType === "MedicationRequest")?.resource?.subject;
+          const instruction = [medicine.strength || medicine.dosage, medicine.frequency, medicine.timing, medicine.duration, medicine.instructions].filter(Boolean).join(" · ");
+          const resource = { resourceType: "MedicationRequest", id: crypto.randomUUID(), status: "unknown", intent: "order", reportedBoolean: true, medicationCodeableConcept: { text: medicine.name || "Unclear medicine" } };
+          if (subject) resource.subject = structuredClone(subject);
+          if (instruction) resource.dosageInstruction = [{ text: instruction }];
+          if (medicine.needsReview || !medicine.userVerified) resource.note = [{ text: "Added during record review; confirm against the source prescription." }];
+          entries.push({ fullUrl: `urn:uuid:${resource.id}`, resource });
+        }
       }
 
       function openOcrReview(record) {
@@ -2711,6 +3459,7 @@
         const medicines = record.medicines
           .map((medicine, index) => ({ medicine, index }))
           .filter(({ medicine }) => medicine.needsReview);
+        const addedMedicineDrafts = new Map();
         const reviewFieldLabel = (item, index) => {
           if (item.field.startsWith("lab:")) {
             const [, testIndex, field] = item.field.split(":");
@@ -2730,6 +3479,7 @@
               <label>Frequency<input data-med-field="frequency" value="${esc(medicine.frequency)}"></label>
               <label>Timing<input data-med-field="timing" value="${esc(medicine.timing)}"></label>
               <label>Duration<input data-med-field="duration" value="${esc(medicine.duration)}"></label>
+              <label>Other instructions<input data-med-field="instructions" value="${esc(medicine.instructions)}"></label>
             </div>
             ${medicine.alternatives?.length ? `<div class="medicine-alternatives"><span>Possible readings from the image:</span>${medicine.alternatives.map((option) => `<button type="button" class="medicine-alternative" data-med-alternative="${index}" data-value="${esc(option)}">${esc(option)}</button>`).join("")}</div>` : ""}
           </article>`).join("");
@@ -2740,13 +3490,11 @@
           <label>Your correction<input data-review-field="${esc(item.field)}" data-review-index-value="${index}" value="${esc(item.value)}"></label>
           ${item.alternatives.length ? `<div class="medicine-alternatives"><span>Possible readings:</span>${item.alternatives.map((option) => `<button type="button" class="review-alternative" data-review-index="${index}" data-value="${esc(option)}">${esc(option)}</button>`).join("")}</div>` : ""}</article>`).join("");
         const transcriptOnlyReview = !fieldMarkup && !medicineMarkup;
-        content.innerHTML = `${preview ? `<figure class="ocr-review-preview"><figcaption>Original upload</figcaption><img src="${esc(preview)}" alt="Uploaded medical document"></figure>` : ""}${fieldMarkup}${medicineMarkup}${transcriptOnlyReview ? `<article class="ocr-uncertain-item"><h3>Text that needs a second look</h3><p>Some text could not be read confidently. Correct the marked [unclear] parts below, or leave them unresolved.</p><label>Corrected transcription<textarea data-review-transcription rows="5">${esc(record.verbatimTranscription)}</textarea></label></article>` : ""}`;
+        content.innerHTML = `${preview ? `<figure class="ocr-review-preview"><figcaption>Original upload</figcaption><img src="${esc(preview)}" alt="Uploaded medical document"></figure>` : ""}${fieldMarkup}${medicineMarkup}${transcriptOnlyReview ? `<article class="ocr-uncertain-item"><h3>Text that needs a second look</h3><p>Some text could not be read confidently. Correct the marked [unclear] parts below, or leave them unresolved.</p><label>Corrected transcription<textarea data-review-transcription rows="5">${esc(record.verbatimTranscription)}</textarea></label></article>` : ""}<section class="ocr-add-medicine"><h3>Add another medicine</h3><p>Enter only details shown on the prescription or confirmed by your clinician.</p><button type="button" class="btn-sm btn-sec" data-add-review-medicine>＋ Add medicine</button><div data-new-medicines></div></section>`;
         overlay.hidden = false;
         const dialog = overlay.querySelector(".ocr-review-dialog");
         dialog?.focus();
-        $("#ocr-review-ack").checked = false;
-        $("#ocr-review-save").disabled = true;
-        $("#ocr-review-ack").onchange = () => { $("#ocr-review-save").disabled = !$("#ocr-review-ack").checked; };
+        $("#ocr-review-save").disabled = false;
         const closeReview = () => { overlay.hidden = true; document.querySelector(".chat-rec-review-action")?.focus(); };
         $("#ocr-review-close").onclick = () => { closeReview(); notify("You can review the unclear text from the chat result later."); };
         dialog?.addEventListener("keydown", (event) => {
@@ -2767,10 +3515,20 @@
             med.name = value("name");
             med.strength = med.dosage = value("strength");
             med.form = value("form"); med.frequency = value("frequency");
-            med.timing = value("timing"); med.duration = value("duration");
+            med.timing = value("timing"); med.duration = value("duration"); med.instructions = value("instructions");
             med.userVerified = Boolean(med.name) && med.name.toLowerCase() !== "illegible";
             med.needsReview = !med.userVerified;
             if (med.userVerified) med.reviewReason = "";
+          });
+          content.querySelectorAll("[data-new-med]").forEach((row) => {
+            const value = (key) => row.querySelector(`[data-med-field="${key}"]`)?.value.trim() || "";
+            const name = value("name");
+            if (!name) return;
+            const id = row.dataset.draftId;
+            const medicine = addedMedicineDrafts.get(id) || { sourceText: "Added by the user during record review.", userVerified: true, needsReview: false, reminderTimes: [] };
+            Object.assign(medicine, { name, strength: value("strength"), dosage: value("strength"), form: value("form"), frequency: value("frequency"), timing: value("timing"), duration: value("duration"), instructions: value("instructions") });
+            if (!addedMedicineDrafts.has(id)) record.medicines.push(medicine);
+            addedMedicineDrafts.set(id, medicine);
           });
           content.querySelectorAll("[data-review-field]").forEach((input) => {
             const field = input.dataset.reviewField;
@@ -2812,13 +3570,33 @@
           record.reviewRequired = record.reviewItems.length > 0 || record.medicines.some((medicine) => medicine.needsReview) || record.labTests.some((test) => test.needsReview) || (transcriptOnlyReview && /\[unclear\]/i.test(record.verbatimTranscription));
           record.medicinesConfirmed = record.medicines.length > 0 && record.medicines.every((medicine) => medicine.userVerified && !medicine.needsReview);
           syncAutoReminders(record);
-          save();
+          if (!save()) {
+            notify("Your corrections are still shown here, but this browser could not save them. Free some browser storage, then select Save corrections again.", true);
+            return;
+          }
           overlay.hidden = true;
           renderChat();
           if (activePage === "details") renderHealthDetailsPage();
           if (activePage === "records") renderRecordsPage();
           notify(record.reviewRequired ? "Saved. Any unresolved fields remain marked so they won’t be used as confirmed information." : "Corrections saved to your record.");
         };
+        content.querySelector("[data-add-review-medicine]")?.addEventListener("click", () => {
+          const rows = content.querySelector("[data-new-medicines]");
+          const number = rows.querySelectorAll("[data-new-med]").length + 1;
+          const row = document.createElement("article");
+          row.className = "ocr-uncertain-item";
+          row.dataset.newMed = "";
+          row.dataset.draftId = crypto.randomUUID();
+          row.innerHTML = `<h3>New medicine ${number}</h3><div class="ocr-uncertain-fields"><label>Name<input data-med-field="name" autocomplete="off" required></label><label>Strength / dose<input data-med-field="strength" autocomplete="off"></label><label>Form<input data-med-field="form" autocomplete="off"></label><label>Frequency<input data-med-field="frequency" autocomplete="off"></label><label>Timing<input data-med-field="timing" autocomplete="off"></label><label>Duration<input data-med-field="duration" autocomplete="off"></label><label>Other instructions<input data-med-field="instructions" autocomplete="off"></label></div><button type="button" class="btn-sm btn-sec" data-remove-new-medicine>Remove</button>`;
+          row.querySelector("[data-remove-new-medicine]").onclick = () => {
+            const draft = addedMedicineDrafts.get(row.dataset.draftId);
+            if (draft) record.medicines = record.medicines.filter((medicine) => medicine !== draft);
+            addedMedicineDrafts.delete(row.dataset.draftId);
+            row.remove();
+          };
+          rows.append(row);
+          row.querySelector('[data-med-field="name"]').focus();
+        });
         content.querySelectorAll("[data-med-alternative]").forEach((button) => button.onclick = () => {
           const row = content.querySelector(`[data-review-med="${button.dataset.medAlternative}"]`);
           const input = row?.querySelector('[data-med-field="name"]');
@@ -2834,17 +3612,20 @@
         if (!record?.id) return;
         const previous = S.reminders.filter((item) => item.recordId === record.id);
         S.reminders = S.reminders.filter((item) => item.recordId !== record.id);
+        const careTips = [...(record.selfCareTips || []), ...Object.values(record.translations || {}).flatMap((translation) => translation.selfCareTips || [])];
+        S.reminders.push(...previous.filter((item) => item.type === "care" && careTips.includes(item.message)));
         if (!record.medicinesConfirmed) return;
+        previous.filter((item) => item.type !== "care" && record.medicines?.[item.medicineIndex]?.userVerified && !record.medicines[item.medicineIndex].needsReview).forEach((item) => S.reminders.push(item));
         record.medicines.forEach((medicine, medicineIndex) => {
           if (!medicine.userVerified || !medicine.name || medicine.needsReview) return;
           (medicine.reminderTimes || []).forEach((time) => {
             const prior = previous.find((item) => item.medicineIndex === medicineIndex && item.time === time);
-            S.reminders.push({ recordId: record.id, medicineIndex, time, lastFired: prior?.lastFired || "" });
+            if (!S.reminders.some((item) => item.recordId === record.id && item.medicineIndex === medicineIndex && item.time === time && !item.scheduledAt)) S.reminders.push({ id: crypto.randomUUID(), type: "medicine", recordId: record.id, medicineIndex, time, lastFired: prior?.lastFired || "", takenDates: prior?.takenDates || [] });
           });
         });
       }
 
-      function handleAnalyzedRecord(value, audio, previewUrl = "") {
+      function handleAnalyzedRecord(value, audio, previewUrl = "", familyMemberId = "") {
         const record = normalizeRecord(value);
         if (!record)
           throw new Error(
@@ -2855,6 +3636,24 @@
           const clearMedicines = record.medicines.every((medicine) => !medicine.needsReview && medicine.name && medicine.name.toLowerCase() !== "illegible");
           record.medicinesConfirmed = clearMedicines;
           if (record.medicinesConfirmed) record.medicines.forEach((medicine) => { medicine.userVerified = true; });
+        }
+        if (familyMemberId) {
+          const familyMember = S.familyMembers.find((member) => member.id === familyMemberId);
+          if (!familyMember) throw new Error("The family profile could not be found. Your report was not added.");
+          if (previewUrl) recordPreviews.set(record.id, previewUrl);
+          const previousRecords = familyMember.records || [];
+          const existingIndex = previousRecords.findIndex((item) => item.id === record.id);
+          familyMember.records = [...previousRecords];
+          if (existingIndex < 0) familyMember.records.unshift(record);
+          else familyMember.records[existingIndex] = record;
+          S.familySelectedMemberId = familyMember.id;
+          if (!save()) {
+            familyMember.records = previousRecords;
+            throw new Error("The family report could not be saved. Free some browser storage and try again.");
+          }
+          switchPage("family-records");
+          setExp("supportive", 1600);
+          return;
         }
         const index = S.records.findIndex((r) => r.id === record.id);
         if (index < 0) S.records.unshift(record);
@@ -2871,6 +3670,15 @@
           recordId: record.id,
         });
         save();
+        const reportReadyMessages = {
+          en: `${record.title || "Your report"} is ready in Mr.Doc.`,
+          hi: `${record.title || "आपकी रिपोर्ट"} Mr.Doc में तैयार है।`,
+          te: `${record.title || "మీ రిపోర్ట్"} Mr.Doc లో సిద్ధంగా ఉంది.`,
+          ta: `${record.title || "உங்கள் அறிக்கை"} Mr.Doc இல் தயாராக உள்ளது.`,
+        };
+        if (window.Notification?.permission === "granted") {
+          new Notification("Mr.Doc", { body: reportReadyMessages[S.lang] || reportReadyMessages.en, tag: `report-${record.id}` });
+        }
         switchPage("chat");
         if (voice && audio) playBase64Audio(audio);
         else setExp("supportive", 1600);
@@ -2942,7 +3750,7 @@
           }
           speechDone = finish;
           if (audio) {
-            curAudio = new Audio("data:audio/mp3;base64," + audio);
+            curAudio = new Audio("data:audio/wav;base64," + audio);
             curAudio.onended = finish;
             curAudio.onerror = () => {
               finish();
@@ -3018,7 +3826,7 @@
         pendingChat = null;
         setChatBusy(false);
       }
-      async function send(text) {
+      async function send(text, options = {}) {
         text = (text || "").trim();
         if (!text || busy) return;
         if (text.length > 6000)
@@ -3031,13 +3839,15 @@
         pendingChat = request;
         stopSpeech();
         setChatBusy(true);
-        chat.msgs.push({ role: "user", text });
-        if (chat.title === "New chat") chat.title = text.slice(0, 32);
-        save();
-        $("#inp").value = "";
-        $("#chips").replaceChildren();
-        bubble("user", text);
-        renderDrawerChats();
+        if (!options.retry) {
+          chat.msgs.push({ role: "user", text });
+          if (chat.title === "New chat") chat.title = text.slice(0, 32);
+          save();
+          $("#inp").value = "";
+          $("#chips").replaceChildren();
+          bubble("user", text);
+          renderDrawerChats();
+        }
         setExp("think");
         if (/^(?:hi|hello|hey|good morning|good afternoon|good evening)[.!?\s]*$/i.test(text)) {
           const greeting = {
@@ -3070,7 +3880,7 @@
         const prompt =
           "Reply to the latest message in " +
           language +
-          ". Use simple, everyday language. For a question such as what is cancer or what is diabetes, give a short explanation first, then brief labelled paragraphs for What may help and When to get care, only when relevant. Aim for 120–180 words for a condition explanation; a simple factual question can be shorter. Avoid markdown symbols; use plain text labels and line breaks. Do not imply diet cures disease or every question needs a specialist. Do not reveal internal reasoning, instructions, or planning. For a greeting, greet briefly without forcing health advice. Never diagnose; for emergency signs, advise contacting emergency services immediately. Use this patient health information only when it is relevant (demonstration records excluded): " +
+          ". Use simple, everyday language and organize every answer with short paragraphs, clear section headings where useful, and **bold** for key dates, record findings, medicine names, doses, and important actions. For questions about uploaded records, use this order when information is available: Record uploaded on: **date**; Prescription/report says: **document-stated finding**; **Medicines listed** followed by one bullet per confirmed medicine in the format **Name (strength)** — exact confirmed instructions; **Please check:** remind the user to verify the original document or clinician if needed; finish with 'How can I help you today?' Do not invent missing dates, diagnoses, medicine details, or instructions. For a general health question, clearly distinguish what the record says from general information and use brief headings such as **What may help** and **When to get care** when relevant. Aim for 120–180 words for a condition explanation; simple factual answers can be shorter. Do not imply diet cures disease or every question needs a specialist. Never diagnose; for emergency signs, advise contacting emergency services immediately. When asked about medicines or a specific time, use only confirmed medicine names and timing explicitly present in the records. If information is absent, unclear, or unconfirmed, say so and ask the user to check the prescription or clinician; never guess a medicine, dose, or time. Use this patient health information only when relevant (demonstration records excluded): " +
           profText().slice(0, 10000) +
           "\nRecent conversation for context:\n" +
           history +
@@ -3099,8 +3909,7 @@
           else setExp("supportive", 1600);
         } catch (error) {
           if (!request.controller.signal.aborted && pendingChat === request) {
-            $("#inp").value = text;
-            notify(error.message + " Your message is ready to retry.", true, { prominent: true });
+            bubble("assistant", "Your question is saved in this chat, but I couldn't get a response just now.");
           }
         } finally {
           if (pendingChat === request) {
@@ -3166,7 +3975,7 @@
       };
 
       // Hamburger Menu & Drawer Toggles
-      $("#burger-btn").onclick = () => openDrawer(true);
+      $("#burger-btn").onclick = () => openDrawer($("#burger-btn").getAttribute("aria-expanded") !== "true");
       $("#drawer-close").onclick = () => openDrawer(false);
       $("#drawer-backdrop").onclick = () => openDrawer(false);
       const drawerChatsSection = $(".drawer-chats-sec");
@@ -3196,7 +4005,79 @@
         };
       });
       $("#subtle-guide-btn").onclick = () => switchPage("guide");
-      $(".top-my-health-btn").onclick = () => switchPage("me");
+      $("#top-appointments-btn").onclick = () => switchPage("appointments");
+      $("#top-qr-btn").onclick = openHealthQr;
+      const profileMenuWrap = $(".profile-menu-wrap");
+      const profileMenu = $("#profile-mini-menu");
+      const profileButton = $("#top-my-health-btn");
+      const setProfileMenu = (open) => { profileMenu.hidden = !open; profileButton.setAttribute("aria-expanded", String(open)); };
+      profileButton.onclick = (event) => { event.stopPropagation(); setProfileMenu(profileMenu.hidden); };
+      profileMenu.querySelectorAll("[data-profile-go]").forEach((button) => button.onclick = () => { setProfileMenu(false); switchPage(button.dataset.profileGo); });
+      const remindersOverlay = $("#reminders-overlay");
+      const closeReminders = () => { remindersOverlay.hidden = true; };
+      $("#reminders-button").onclick = () => {
+        setProfileMenu(false);
+        renderReminderCenter();
+        remindersOverlay.hidden = false;
+        $("#reminders-close").focus();
+      };
+      $("#reminders-close").onclick = closeReminders;
+      remindersOverlay.addEventListener("click", (event) => { if (event.target === remindersOverlay) closeReminders(); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !remindersOverlay.hidden) closeReminders(); });
+      const reminderSetupOverlay = $("#medicine-reminder-setup-overlay");
+      const reminderSetupForm = $("#medicine-reminder-setup");
+      const closeReminderSetup = () => { reminderSetupOverlay.hidden = true; };
+      const medicineAlertOverlay = $("#medicine-alert-overlay");
+      $("#medicine-alert-dismiss").onclick = () => dismissReminderPopup(false);
+      $("#medicine-alert-taken").onclick = () => {
+        const reminderId = medicineAlertOverlay.dataset.reminderId;
+        markReminderTaken(reminderId);
+        dismissReminderPopup(false);
+      };
+      $("#medicine-alert-open-record").onclick = () => dismissReminderPopup(true);
+      medicineAlertOverlay.addEventListener("click", (event) => { if (event.target === medicineAlertOverlay) dismissReminderPopup(false); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !medicineAlertOverlay.hidden) dismissReminderPopup(false); });
+      $("#medicine-reminder-setup-close").onclick = closeReminderSetup;
+      $("#medicine-reminder-setup-cancel").onclick = closeReminderSetup;
+      reminderSetupOverlay.addEventListener("click", (event) => { if (event.target === reminderSetupOverlay) closeReminderSetup(); });
+      $("#medicine-reminder-start").addEventListener("change", (event) => { $("#medicine-reminder-end").min = event.target.value; });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !reminderSetupOverlay.hidden) closeReminderSetup(); });
+      $("#medicine-reminder-repeat").addEventListener("change", (event) => { $("#medicine-reminder-days").hidden = event.target.value !== "weekly"; });
+      reminderSetupForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const { recordId, medicineIndex: indexText } = reminderSetupForm.dataset;
+        const medicineIndex = Number(indexText);
+        const type = reminderSetupForm.dataset.type === "care" ? "care" : "medicine";
+        const record = S.records.find((item) => item.id === recordId);
+        const medicine = record?.medicines?.[medicineIndex];
+        const time = selectedReminderTime();
+        const repeat = $("#medicine-reminder-repeat").value;
+        const startDate = $("#medicine-reminder-start").value;
+        const endDate = $("#medicine-reminder-end").value;
+        const days = repeat === "weekly" ? [...$("#medicine-reminder-days").querySelectorAll("input:checked")].map((input) => Number(input.value)) : [];
+        const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const validTarget = type === "care"
+          ? Boolean(record && !isDemo(record) && !isUnavailable(record) && [...(record.selfCareTips || []), ...(record.translations?.[S.lang]?.selfCareTips || [])].includes($("#medicine-reminder-medicine-name").textContent))
+          : Boolean(record?.medicinesConfirmed && medicine?.userVerified && !medicine.needsReview);
+        if (!validTarget || !time || !startDate || startDate < today || (endDate && endDate < startDate) || (repeat === "weekly" && !days.length)) {
+          notify("Check the time, date range, and selected reminder days.", true);
+          return;
+        }
+        const message = type === "care" ? $("#medicine-reminder-medicine-name").textContent : "";
+        S.reminders = S.reminders.filter((item) => !(item.type === type && item.recordId === recordId && (type === "care" ? item.message === message : item.medicineIndex === medicineIndex) && !item.scheduledAt));
+        S.reminders.push({ id: crypto.randomUUID(), type, recordId, medicineIndex, message, time, scheduledAt: "", days, startDate, endDate, firedAt: "", lastFired: "", takenDates: [] });
+        save();
+        closeReminderSetup();
+        notify(type === "care" ? "Care suggestion reminder saved." : `Reminder saved for ${medicine.name}.`);
+        if (activePage === "records") renderRecordsPage();
+        if (activePage === "details") renderHealthDetailsPage();
+        if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+      });
+      document.addEventListener("click", (event) => { if (!profileMenuWrap.contains(event.target)) setProfileMenu(false); });
+      profileButton.addEventListener("keydown", (event) => { if (event.key === "ArrowDown" && profileMenu.hidden) { event.preventDefault(); setProfileMenu(true); profileMenu.querySelector("button")?.focus(); } });
+      $("#health-qr-close").onclick = () => { $("#health-qr-overlay").hidden = true; };
+      $("#health-qr-overlay").addEventListener("click", (event) => { if (event.target === event.currentTarget) event.currentTarget.hidden = true; });
+      $("#health-qr-reports").onclick = () => { $("#health-qr-overlay").hidden = true; switchPage("records"); };
 
       // Front Page Language Dropdown (ENG ▾)
       const langBtn = $("#lang-btn");
@@ -3308,56 +4189,162 @@
         if (file) handleFileUpload(file);
       };
       $("#upload-retry-btn").onclick = () => {
-        if ($("#upload-retry-btn").dataset.chooseFile) fileInp.click();
-        else if (lastUploadFile) handleFileUpload(lastUploadFile);
+        if ($("#upload-retry-btn").dataset.chooseFile) {
+          const familyPicker = lastUploadFamilyMemberId && $("#family-report-file");
+          if (familyPicker) familyPicker.click();
+          else fileInp.click();
+        } else if (lastUploadFile) handleFileUpload(lastUploadFile, lastUploadFamilyMemberId);
       };
-      $("#upload-retry-dismiss").onclick = () => { $("#upload-retry-banner").hidden = true; lastUploadFile = null; };
+      $("#upload-retry-dismiss").onclick = () => { $("#upload-retry-banner").hidden = true; lastUploadFile = null; lastUploadFamilyMemberId = ""; };
 
 
-      // Listening Waveform Button (||||)
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      // Record in the browser and transcribe through the configured Mr.Doc backend.
       const micBtn = $("#mic");
-      if (!SR) {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
         micBtn.style.display = "none";
       } else {
-        const r = new SR();
-        r.lang = speechLanguage();
-        r.interimResults = false;
-        let listening = false;
-        r.onresult = (e) => {
-          $("#inp").value = e.results[0][0].transcript;
-          send($("#inp").value);
-        };
-        r.onerror = (e) => {
-          if (e.error !== "aborted")
-            notify(
-              e.error === "not-allowed"
-                ? "Microphone access is blocked. You can type your message."
-                : "Voice input could not start. Please try again.",
-              true,
-            );
-        };
-        r.onend = () => {
-          listening = false;
+        let recorder = null;
+        let recordingStream = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let discardRecording = false;
+        let transcriptionController = null;
+        const voiceOverlay = $("#voice-recording-overlay");
+        const voiceDialog = voiceOverlay.querySelector(".voice-recording-dialog");
+        const voiceStatus = $("#voice-recording-status");
+        const voiceHint = $("#voice-recording-hint");
+        const voiceFinish = $("#voice-recording-finish");
+        const openVoiceDialog = () => { voiceOverlay.hidden = false; $("#voice-recording-cancel").focus(); };
+        const closeVoiceDialog = () => { voiceOverlay.hidden = true; voiceDialog.classList.remove("is-transcribing"); voiceFinish.disabled = false; };
+        const resetMic = () => {
           micBtn.classList.remove("on");
           micBtn.setAttribute("aria-pressed", "false");
           if (!busy) setExp("happy");
         };
-        micBtn.onclick = () => {
-          if (listening) {
-            r.stop();
+        const stopRecording = () => {
+          if (!isRecording || !recorder) return;
+          isRecording = false;
+          voiceDialog.classList.add("is-transcribing");
+          voiceStatus.textContent = "Transcribing your voice…";
+          voiceHint.textContent = "Your recording will be sent as a message when transcription is ready.";
+          voiceFinish.disabled = true;
+          voiceFinish.textContent = "Transcribing…";
+          micBtn.title = "Transcribing your recording";
+          micBtn.setAttribute("aria-label", "Transcribing your recording");
+          if (recorder.state !== "inactive") recorder.stop();
+        };
+        const cancelVoiceRecording = () => {
+          discardRecording = true;
+          if (transcriptionController) transcriptionController.abort();
+          if (recorder?.state && recorder.state !== "inactive") {
+            isRecording = false;
+            recorder.stop();
+          } else {
+            discardRecording = false;
+            recordingStream?.getTracks().forEach((track) => track.stop());
+            recordingStream = null;
+          }
+          closeVoiceDialog();
+          resetMic();
+        };
+        $("#voice-recording-cancel").onclick = cancelVoiceRecording;
+        voiceFinish.onclick = stopRecording;
+        voiceOverlay.onclick = (event) => { if (event.target === voiceOverlay) cancelVoiceRecording(); };
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !voiceOverlay.hidden) cancelVoiceRecording();
+        });
+        micBtn.title = "Tap to record; tap again to transcribe and send";
+        micBtn.onclick = async () => {
+          if (isRecording) {
+            stopRecording();
             return;
           }
           try {
             if (busy) return;
             stopSpeech();
-            r.lang = speechLanguage();
-            r.start();
-            listening = true;
+            recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
+              .find((type) => MediaRecorder.isTypeSupported(type)) || "";
+            recorder = mimeType ? new MediaRecorder(recordingStream, { mimeType }) : new MediaRecorder(recordingStream);
+            audioChunks = [];
+            recorder.ondataavailable = (event) => { if (event.data?.size) audioChunks.push(event.data); };
+            recorder.onerror = () => {
+              isRecording = false;
+              recordingStream?.getTracks().forEach((track) => track.stop());
+              recordingStream = null;
+              resetMic();
+              notify("Recording failed. Please try again or type your message.", true);
+            };
+            recorder.onstop = async () => {
+              const recording = new Blob(audioChunks, { type: recorder.mimeType || mimeType || "audio/webm" });
+              recordingStream?.getTracks().forEach((track) => track.stop());
+              recordingStream = null;
+              recorder = null;
+              audioChunks = [];
+              if (discardRecording) {
+                discardRecording = false;
+                closeVoiceDialog();
+                resetMic();
+                return;
+              }
+              if (!recording.size) {
+                closeVoiceDialog();
+                resetMic();
+                notify("No speech was recorded. Tap the microphone and try again.", true);
+                return;
+              }
+              micBtn.disabled = true;
+              transcriptionController = new AbortController();
+              try {
+                const bytes = new Uint8Array(await recording.arrayBuffer());
+                let binary = "";
+                for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+                  binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+                }
+                const data = await requestJson(CONFIG.transcribeEndpoint, {
+                  audio: btoa(binary),
+                  mimeType: (recording.type || mimeType || "audio/webm").split(";")[0],
+                  language: speechLanguage().slice(0, 2),
+                }, transcriptionController.signal);
+                if (!data.text?.trim()) throw new Error("No speech was recognized. Try again or type your message.");
+                const transcript = data.text.trim();
+                $("#inp").value = transcript;
+                closeVoiceDialog();
+                await send(transcript, { fromVoice: true });
+              } catch (error) {
+                if (!transcriptionController.signal.aborted) notify(error.message || "Voice transcription failed. Please try again or type your message.", true);
+              } finally {
+                transcriptionController = null;
+                micBtn.disabled = false;
+                micBtn.title = "Tap to record; tap again to transcribe and send";
+                micBtn.setAttribute("aria-label", "Record a voice message");
+                voiceFinish.textContent = "Finish & send";
+                closeVoiceDialog();
+                resetMic();
+              }
+            };
+            recorder.start();
+            isRecording = true;
+            voiceStatus.textContent = "Listening. Speak now.";
+            voiceHint.textContent = "Your words will be transcribed and sent when you finish.";
+            voiceFinish.textContent = "Finish & send";
+            openVoiceDialog();
             micBtn.classList.add("on");
             micBtn.setAttribute("aria-pressed", "true");
             setExp("look");
-          } catch (e) {}
+          } catch (error) {
+            recordingStream?.getTracks().forEach((track) => track.stop());
+            recordingStream = null;
+            isRecording = false;
+            resetMic();
+            const messages = {
+              NotAllowedError: "Microphone access is blocked. Allow microphone access for localhost in your browser settings, then try again.",
+              NotFoundError: "No microphone was found. Connect a microphone or type your message.",
+              NotReadableError: "The microphone is busy in another app. Close that app and try again.",
+              SecurityError: "Microphone access requires a secure page. Open Mr.Doc using localhost.",
+            };
+            notify(messages[error?.name] || `Voice recording could not start${error?.name ? ` (${error.name})` : ""}. Check microphone access and try again.`, true);
+          }
         };
       }
 
@@ -3572,10 +4559,17 @@
           $("#drawer-backdrop").classList.remove("open");
           $("#app-main").inert = false;
           $(".top-bar").inert = false;
-          $("#burger-btn").setAttribute("aria-expanded", "false");
-          drawer.querySelectorAll(".nav-item").forEach((item) => item.removeAttribute("title"));
+          const expanded = document.body.classList.contains("sidebar-expanded");
+          $("#burger-btn").setAttribute("aria-expanded", String(expanded));
+          $("#burger-btn").setAttribute("aria-label", expanded ? "Collapse sidebar" : "Expand sidebar");
+        const compactHeight = window.innerHeight < 721;
+        drawer.querySelectorAll("[data-label]").forEach((item) => {
+          if (compactHeight) item.title = item.dataset.label;
+          else item.removeAttribute("title");
+        });
           requestAnimationFrame(() => syncDrawerNavPill(false));
         } else {
+          document.body.classList.remove("sidebar-expanded");
           drawer.classList.remove("open");
           drawer.setAttribute("role", "dialog");
           drawer.setAttribute("aria-modal", "true");
@@ -3584,6 +4578,7 @@
           $("#app-main").inert = false;
           $(".top-bar").inert = false;
           $("#burger-btn").setAttribute("aria-expanded", "false");
+          $("#burger-btn").setAttribute("aria-label", "Expand sidebar");
         }
       }
       window.addEventListener("resize", syncSidebarPresentation, { passive: true });
@@ -3698,13 +4693,31 @@
       const authForm = $("#auth-form");
       const authNameRow = $("#auth-name-row");
       const authName = $("#auth-name");
-      const authGoogleRow = $("#auth-google-row");
-      const authGoogleButton = $("#auth-google");
+      const authConfirmRow = $("#auth-confirm-row");
+      const authConfirmPassword = $("#auth-confirm-password");
       const authEmail = $("#auth-email");
       const authPassword = $("#auth-password");
       const authPasswordToggle = $("#auth-password-toggle");
       const authSubmit = $("#auth-submit");
       const authStatus = $("#auth-status");
+      const authResetRequestForm = $("#auth-reset-request-form");
+      const authResetCompleteForm = $("#auth-reset-complete-form");
+      const authResetEmail = $("#auth-reset-email");
+      const authResetPassword = $("#auth-reset-password");
+      const authResetConfirm = $("#auth-reset-confirm");
+      const authNote = $("#auth-note");
+      const authTabs = $(".auth-tabs");
+      const authTitle = $("#auth-title");
+      const authDescription = $("#auth-description");
+      const resetQuery = new URLSearchParams(window.location.search);
+      let pendingResetToken = resetQuery.get("reset") || "";
+      if (pendingResetToken) {
+        if (!/^[A-Za-z0-9_-]{32,100}$/.test(pendingResetToken)) pendingResetToken = "";
+        resetQuery.delete("reset");
+        const remainingQuery = resetQuery.toString();
+        const cleanUrl = window.location.pathname + (remainingQuery ? `?${remainingQuery}` : "") + window.location.hash;
+        window.history.replaceState(null, "", cleanUrl);
+      }
       let authTypingTimer;
       function setAuthCharacterPose(pose) {
         const src = authCharacterPoses[pose] || authCharacterPoses.idle;
@@ -3776,6 +4789,11 @@
       window.addEventListener("resize", positionIntroVideoMask);
       function closeIntro(startTourNow = false) {
         if (introClosed) return;
+        if (!cloudAuth) {
+          pendingTour = startTourNow;
+          showAuth(startTourNow);
+          return;
+        }
         introClosed = true;
         clearTimeout(introTimer);
         introVideo.pause();
@@ -3841,25 +4859,135 @@
         }
         authStatus.textContent = "";
         authEmail.value = localStorage.getItem("mrdoc_auth_email") || "";
-        setTimeout(() => (authEmail.value ? authPassword : authEmail).focus(), 0);
+        if (pendingResetToken) showPasswordResetComplete();
+        else setTimeout(() => (authEmail.value ? authPassword : authEmail).focus(), 0);
       }
       function setAuthMode(mode) {
         authMode = mode;
         const signup = mode === "signup";
+        authForm.hidden = false;
+        authResetRequestForm.hidden = true;
+        authResetCompleteForm.hidden = true;
+        authTabs.hidden = false;
+        authNote.hidden = false;
+        $("#auth-forgot").hidden = signup;
         authNameRow.hidden = !signup;
         authName.required = signup;
-        authGoogleRow.hidden = !signup;
+        authConfirmRow.hidden = !signup;
+        authConfirmPassword.required = signup;
+        authPassword.minLength = signup ? 12 : 1;
         authPassword.autocomplete = signup ? "new-password" : "current-password";
         $("#auth-signin-tab").classList.toggle("on", !signup);
         $("#auth-signup-tab").classList.toggle("on", signup);
         $("#auth-signin-tab").setAttribute("aria-selected", String(!signup));
         $("#auth-signup-tab").setAttribute("aria-selected", String(signup));
-        $("#auth-title").textContent = signup ? "Create your account" : "Welcome back";
-        $("#auth-description").textContent = signup ? "Set up your private Mr.Doc workspace." : "Sign in to continue to your health assistant.";
+        authTitle.textContent = signup ? "Create your account" : "Welcome back";
+        authDescription.textContent = signup ? "Create an account to keep your health workspace linked to you." : "Sign in to open your saved health workspace.";
         authSubmit.textContent = signup ? "Create account and continue" : "Sign in and continue";
         authStatus.textContent = "";
         authStatus.classList.remove("is-info");
       }
+      function showPasswordResetRequest() {
+        authMode = "signin";
+        authForm.hidden = true;
+        authResetRequestForm.hidden = false;
+        authResetCompleteForm.hidden = true;
+        authTabs.hidden = true;
+        authNote.hidden = true;
+        authTitle.textContent = "Reset your password";
+        authDescription.textContent = "Enter the email address on your account. If it is registered, we’ll send a one-time reset link.";
+        authResetEmail.value = authEmail.value.trim();
+        authStatus.textContent = "";
+        authStatus.classList.remove("is-info");
+        authResetEmail.focus();
+      }
+      function showPasswordResetComplete() {
+        authMode = "signin";
+        authForm.hidden = true;
+        authResetRequestForm.hidden = true;
+        authResetCompleteForm.hidden = false;
+        authTabs.hidden = true;
+        authNote.hidden = true;
+        authTitle.textContent = "Choose a new password";
+        authDescription.textContent = "Use at least 12 characters. Your other signed-in sessions will be ended.";
+        authStatus.textContent = "";
+        authStatus.classList.remove("is-info");
+        authResetPassword.focus();
+      }
+      function returnToSignIn(message = "") {
+        pendingResetToken = "";
+        authResetPassword.value = "";
+        authResetConfirm.value = "";
+        authResetRequestForm.hidden = true;
+        authResetCompleteForm.hidden = true;
+        setAuthMode("signin");
+        authStatus.textContent = message;
+      }
+      $("#auth-forgot").addEventListener("click", showPasswordResetRequest);
+      $("#auth-reset-request-back").addEventListener("click", () => returnToSignIn());
+      $("#auth-reset-complete-back").addEventListener("click", () => returnToSignIn());
+      authResetRequestForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!authResetRequestForm.reportValidity()) return;
+        const button = $("#auth-reset-request-submit");
+        button.disabled = true;
+        button.textContent = "Sending…";
+        authStatus.classList.add("is-info");
+        authStatus.textContent = "Requesting a secure reset link…";
+        try {
+          const response = await fetch("/api/auth/request-reset", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: authResetEmail.value.trim() }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || "The reset link could not be sent. Try again later.");
+          authStatus.textContent = result.message;
+        } catch (error) {
+          authStatus.classList.remove("is-info");
+          authStatus.textContent = error.message || "The reset link could not be sent. Try again later.";
+        } finally {
+          button.disabled = false;
+          button.textContent = "Send reset link";
+        }
+      });
+      authResetCompleteForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!authResetCompleteForm.reportValidity()) return;
+        if (!pendingResetToken) {
+          authStatus.textContent = "This reset link is invalid or expired. Request a new one.";
+          return;
+        }
+        if (authResetPassword.value !== authResetConfirm.value) {
+          authStatus.textContent = "The passwords do not match.";
+          authResetConfirm.focus();
+          return;
+        }
+        const button = $("#auth-reset-complete-submit");
+        button.disabled = true;
+        button.textContent = "Updating…";
+        authStatus.classList.add("is-info");
+        authStatus.textContent = "Updating your password securely…";
+        try {
+          const response = await fetch("/api/auth/reset-password", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: pendingResetToken, password: authResetPassword.value }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || "The password could not be updated. Request a new reset link.");
+          returnToSignIn(result.message || "Your password has been updated. Sign in with your new password.");
+          authStatus.classList.add("is-info");
+        } catch (error) {
+          authStatus.classList.remove("is-info");
+          authStatus.textContent = error.message || "The password could not be updated. Request a new reset link.";
+        } finally {
+          button.disabled = false;
+          button.textContent = "Update password";
+        }
+      });
       authPasswordToggle.addEventListener("click", () => {
         const showPassword = authPassword.type === "password";
         authPassword.type = showPassword ? "text" : "password";
@@ -3868,11 +4996,6 @@
           "aria-label",
           showPassword ? "Hide password" : "Show password",
         );
-      });
-      authGoogleButton.addEventListener("click", () => {
-        authStatus.classList.add("is-info");
-        authStatus.textContent =
-          "Google sign-in needs OAuth setup before it can create or access an account.";
       });
       async function playIntroVideo() {
         if (introClosed || introStart.disabled) return;
@@ -3945,25 +5068,59 @@
           authName.focus();
           return;
         }
-        localStorage.setItem("mrdoc_auth_email", authEmail.value.trim());
-        localStorage.setItem("mrdoc_auth_seen", "1");
-        if (authMode === "signup" && authName.value.trim()) {
-          localStorage.setItem("mrdoc_auth_username", authName.value.trim());
-          S.profile.name = authName.value.trim();
-          save();
-        }
-        authPassword.value = "";
-        if (authAfterTutorial || authHomeAfterSubmit) {
-          authAfterTutorial = false;
-          authHomeAfterSubmit = false;
-          authScreen.hidden = true;
-          clearCharacterTraveler();
-          document.body.classList.remove("intro-active", "intro-revealing");
-          syncSidebarPresentation();
-          $("#inp").focus({ preventScroll: true });
+        if (authMode === "signup" && authPassword.value !== authConfirmPassword.value) {
+          authStatus.textContent = "The passwords do not match.";
+          authConfirmPassword.focus();
           return;
         }
-        await playIntroVideo();
+        authSubmit.disabled = true;
+        authSubmit.textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
+        authStatus.textContent = "Connecting securely to your account…";
+        authStatus.classList.add("is-info");
+        try {
+          const signup = authMode === "signup";
+          if (signup) S.profile.name = authName.value.trim();
+          const response = await fetch(signup ? "/api/auth/register" : "/api/auth/login", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(signup
+              ? { username: authName.value.trim(), email: authEmail.value.trim(), password: authPassword.value, initialData: localStorage.getItem("mrdoc_has_signed_out") === "1" ? {} : S }
+              : { email: authEmail.value.trim(), password: authPassword.value }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || "We could not sign you in. Please try again.");
+          cloudAuth = { user: result.user, csrfToken: result.csrfToken };
+          window.mrdocCsrfToken = result.csrfToken;
+          const dataResponse = await fetch("/api/account/data", { credentials: "same-origin" });
+          const workspace = await dataResponse.json();
+          if (!dataResponse.ok || !workspace.success) throw new Error(workspace.error || "Your account opened, but its saved workspace could not be loaded.");
+          const accountData = workspace.data && typeof workspace.data === "object" ? workspace.data : {};
+          localStorage.setItem("carely", JSON.stringify(accountData));
+          localStorage.setItem("mrdoc_account_id", result.user.id);
+          localStorage.setItem("mrdoc_auth_email", result.user.email);
+          localStorage.setItem("mrdoc_auth_username", result.user.username);
+          localStorage.setItem("mrdoc_auth_completed", "1");
+          localStorage.setItem("mrdoc_tour_after_auth", authAfterTutorial ? "1" : "0");
+          localStorage.setItem("mrdoc_cloud_dirty", "0");
+          if (workspace.updatedAt) localStorage.setItem("mrdoc_cloud_updated_at", workspace.updatedAt);
+          authPassword.value = "";
+          authConfirmPassword.value = "";
+          window.location.reload();
+        } catch (error) {
+          if (cloudAuth?.csrfToken) {
+            try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": cloudAuth.csrfToken }, body: "{}" }); } catch (_) {}
+          }
+          cloudAuth = null;
+          window.mrdocCsrfToken = "";
+          authStatus.classList.remove("is-info");
+          authStatus.textContent = error.message || "Sign in failed. Check your connection and try again.";
+          authPassword.value = "";
+          authConfirmPassword.value = "";
+        } finally {
+          authSubmit.disabled = false;
+          authSubmit.textContent = authMode === "signup" ? "Create account and continue" : "Sign in and continue";
+        }
       });
       introVideo.addEventListener("playing", () => clearTimeout(introTimer));
       introVideo.addEventListener("waiting", () => {
@@ -3988,21 +5145,91 @@
 
       const signOutButton = $("#drawer-signout-btn");
       if (signOutButton) {
-        signOutButton.onclick = () => {
+        signOutButton.onclick = async () => {
           const confirmed = window.confirm(
-            "Would you like to sign out and return to the sign-in screen? Your chats and profile will stay saved on this device.",
+            "Sign out of your Mr.Doc account on this device? Your account data remains saved securely in the database.",
           );
           if (!confirmed) return;
-          openDrawer(false);
-          stopSpeech();
-          cancelPendingChat();
-          authAfterTutorial = false;
-          authHomeAfterSubmit = true;
-          authPassword.value = "";
-          setAuthMode("signin");
-          showAuth(false);
+          if (cloudAuth) {
+            try {
+              clearTimeout(cloudSaveTimer);
+              const saved = await syncAccountWorkspace();
+              if (!saved) throw new Error("Your latest changes could not be confirmed as saved. Stay signed in and try again before signing out.");
+              const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": cloudAuth.csrfToken }, body: "{}" });
+              if (!response.ok) throw new Error("Sign out could not be completed. Check your connection and try again.");
+            } catch (error) { notify(error.message, true); return; }
+          }
+          cloudAuth = null;
+          window.mrdocCsrfToken = "";
+          localStorage.removeItem("mrdoc_auth_completed");
+          localStorage.setItem("mrdoc_has_signed_out", "1");
+          localStorage.removeItem("carely");
+          localStorage.removeItem("mrdoc_account_id");
+          localStorage.removeItem("mrdoc_cloud_dirty");
+          window.location.reload();
         };
       }
+
+      async function restoreAccountSession() {
+        try {
+          const response = await fetch("/api/auth/session", { credentials: "same-origin", cache: "no-store" });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Could not verify your account session.");
+          if (!result.authenticated) {
+            if (localStorage.getItem("mrdoc_auth_completed") === "1") {
+              localStorage.removeItem("mrdoc_auth_completed");
+              showAuth(false);
+              authStatus.textContent = "Your session ended. Sign in again to open your health workspace.";
+            }
+            return;
+          }
+          cloudAuth = { user: result.user, csrfToken: result.csrfToken };
+          window.mrdocCsrfToken = result.csrfToken;
+          const dataResponse = await fetch("/api/account/data", { credentials: "same-origin", cache: "no-store" });
+          const workspace = await dataResponse.json();
+          if (!dataResponse.ok || !workspace.success) throw new Error(workspace.error || "Your account workspace could not be loaded.");
+          const currentAccount = localStorage.getItem("mrdoc_account_id");
+          const localData = localStorage.getItem("carely") || "{}";
+          const remoteData = workspace.data ? JSON.stringify(workspace.data) : "{}";
+          if (currentAccount !== result.user.id) {
+            localStorage.setItem("carely", remoteData);
+            localStorage.setItem("mrdoc_account_id", result.user.id);
+            localStorage.setItem("mrdoc_cloud_dirty", "0");
+            if (workspace.updatedAt) localStorage.setItem("mrdoc_cloud_updated_at", workspace.updatedAt);
+            localStorage.setItem("mrdoc_auth_completed", "1");
+            window.location.reload();
+            return;
+          }
+          if (localStorage.getItem("mrdoc_cloud_dirty") !== "1" && localData !== remoteData) {
+            localStorage.setItem("carely", remoteData);
+            if (workspace.updatedAt) localStorage.setItem("mrdoc_cloud_updated_at", workspace.updatedAt);
+            window.location.reload();
+            return;
+          }
+          localStorage.setItem("mrdoc_auth_email", result.user.email);
+          localStorage.setItem("mrdoc_auth_username", result.user.username);
+          localStorage.setItem("mrdoc_auth_completed", "1");
+          introScreen.hidden = true;
+          authScreen.hidden = true;
+          introVideo.pause();
+          document.body.classList.remove("intro-active", "intro-revealing");
+          syncSidebarPresentation();
+          if (localStorage.getItem("mrdoc_cloud_dirty") === "1") queueAccountSync();
+          if (localStorage.getItem("mrdoc_tour_after_auth") === "1") {
+            localStorage.removeItem("mrdoc_tour_after_auth");
+            requestAnimationFrame(() => window.startTour?.(true));
+          }
+        } catch (error) {
+          cloudAuth = null;
+          window.mrdocCsrfToken = "";
+          if (localStorage.getItem("mrdoc_auth_completed") === "1") {
+            showAuth(false);
+            authStatus.textContent = `${error.message || "Your account could not be reached."} Your saved workspace has not been opened.`;
+          }
+        }
+      }
+      if (pendingResetToken) showAuth(false);
+      else restoreAccountSession();
 
       document.body.classList.add("intro-active");
       syncSidebarPresentation();
@@ -4061,7 +5288,7 @@
             sel: "#burger-btn",
             place: "bottom",
             title: "The menu",
-            text: "Everything else lives in this menu. Let's open it.",
+            text: "Open the menu to reach reports, timeline, appointments and other health tools.",
           },
           {
             sel: ".drawer-nav",
@@ -4075,7 +5302,7 @@
             drawer: true,
             place: "right",
             title: "My Health",
-            text: "Your personal profile: allergies, conditions and routine medicines.",
+            text: "Your personal health profile, including saved allergies, conditions and medicines.",
           },
           {
             sel: "#records-dropzone",
@@ -4097,6 +5324,45 @@
             place: "right",
             title: "Your health profile",
             text: "See details from your saved records and add personal notes if you want to.",
+          },
+          {
+            sel: "#top-qr-btn",
+            place: "bottom",
+            title: "Your health QR",
+            text: "Open your local profile QR when you choose to share it. Hospital report delivery still needs a connected hospital service.",
+          },
+          {
+            sel: "#top-appointments-btn",
+            place: "bottom",
+            title: "Plan a doctor visit",
+            text: "Save appointment date, time, specialty, location and tests. Generate a draft list of questions to review with your doctor.",
+          },
+          {
+            sel: "#appointment-form",
+            page: "appointments",
+            place: "right",
+            title: "Appointment details",
+            text: "Open the details panel to choose a date, time and doctor or department. The question button creates editable prompts from the information you enter.",
+          },
+          {
+            sel: "#top-my-health-btn",
+            place: "bottom",
+            title: "Profiles and family",
+            text: "Click My Health to keep the menu open, then choose your profile, family profiles or health QR.",
+          },
+          {
+            sel: ".family-profile-grid",
+            page: "family",
+            place: "bottom",
+            title: "Choose a family profile",
+            text: "Select who is using Mr.Doc and add family members so each person can keep their health information separate.",
+          },
+          {
+            sel: "#page-guide-content",
+            page: "guide",
+            place: "top",
+            title: "Personalized health guidance",
+            text: "Explore wellness guidance based on the age and health information you have saved. Mr.Doc offers support, not diagnosis.",
           },
           {
             sel: null,

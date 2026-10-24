@@ -27,7 +27,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="styles.css?v=sidebar-header-v3-20261023" />
+    <link rel="stylesheet" href="styles.css?v=password-reset-20261024" />
   </head>
   <body class="intro-active">
     <!-- Welcome screen; the animated introduction starts only after the visitor clicks. -->
@@ -38,7 +38,7 @@
     >
       <header class="intro-header">
         <div class="intro-brand" aria-label="Mr.Doc AI Copilot">
-          <span class="intro-brand-mark" aria-hidden="true">+</span>
+          <span class="intro-brand-mark brand-mark-crop" aria-hidden="true"><img src="assets/mrdoc-health-logo.svg" alt=""></span>
           <span class="intro-brand-name">MR.DOC <small>AI COPILOT</small></span>
         </div>
         <span class="intro-header-note"
@@ -121,7 +121,7 @@
       <button class="auth-back" id="auth-back" type="button" aria-label="Return to welcome page">← Back</button>
       <div class="auth-character" aria-hidden="true"><img src="assets/auth-character/idle.png" alt=""></div>
       <div class="auth-card">
-        <div class="auth-brand"><span>+</span><b>Mr.Doc</b></div>
+        <div class="auth-brand"><span class="brand-mark-crop"><img src="assets/mrdoc-health-logo.svg" alt=""></span><b>Mr.Doc</b></div>
         <p class="auth-kicker">Your private health workspace</p>
         <h2 id="auth-title">Welcome</h2>
         <p id="auth-description">Sign in to continue to your health assistant.</p>
@@ -132,14 +132,23 @@
         <form id="auth-form">
           <label id="auth-name-row" hidden>Username<input id="auth-name" type="text" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9._-]{3,24}" title="Use 3–24 letters, numbers, dots, underscores, or hyphens." /></label>
           <label>Email address<input id="auth-email" type="email" autocomplete="email" required /></label>
-          <label>Password<div class="password-field"><input id="auth-password" type="password" autocomplete="current-password" minlength="6" required /><button id="auth-password-toggle" class="password-visibility-toggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.7"/><path class="password-eye-slash" d="m4 4 16 16"/></svg></button></div></label>
+          <label>Password<div class="password-field"><input id="auth-password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required /><button id="auth-password-toggle" class="password-visibility-toggle" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.7"/><path class="password-eye-slash" d="m4 4 16 16"/></svg></button></div></label>
+          <label id="auth-confirm-row" hidden>Confirm password<input id="auth-confirm-password" type="password" autocomplete="new-password" minlength="12" /></label>
           <button class="auth-submit" id="auth-submit" type="submit">Sign in and continue</button>
+          <button class="auth-forgot" id="auth-forgot" type="button">Forgot password?</button>
         </form>
-        <div class="auth-google-row" id="auth-google-row" hidden>
-          <div class="auth-divider"><span>or</span></div>
-          <button class="auth-google-btn" id="auth-google" type="button"><span class="google-g" aria-hidden="true">G</span>Continue with Google</button>
-        </div>
-        <p class="auth-note">Prototype sign in: details stay on this browser and are not sent to an account service.</p>
+        <form id="auth-reset-request-form" class="auth-reset-form" hidden>
+          <label>Email address<input id="auth-reset-email" type="email" autocomplete="email" required maxlength="254" /></label>
+          <button class="auth-submit" id="auth-reset-request-submit" type="submit">Send reset link</button>
+          <button class="auth-forgot" id="auth-reset-request-back" type="button">Back to sign in</button>
+        </form>
+        <form id="auth-reset-complete-form" class="auth-reset-form" hidden>
+          <label>New password<input id="auth-reset-password" type="password" autocomplete="new-password" required minlength="12" maxlength="128" /></label>
+          <label>Confirm new password<input id="auth-reset-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="128" /></label>
+          <button class="auth-submit" id="auth-reset-complete-submit" type="submit">Update password</button>
+          <button class="auth-forgot" id="auth-reset-complete-back" type="button">Back to sign in</button>
+        </form>
+        <p class="auth-note" id="auth-note">Your account and health workspace are saved in this app’s database. Account creation copies this browser’s current Mr.Doc workspace to your account.</p>
         <p id="auth-status" class="auth-status" role="status"></p>
       </div>
     </section>
@@ -152,12 +161,12 @@
         <button
           class="burger-btn"
           id="burger-btn"
-          title="Open Menu"
-          aria-label="Open menu"
+          title="Toggle sidebar"
+          aria-label="Expand sidebar"
           aria-controls="drawer"
           aria-expanded="false"
         >
-          <span></span><span></span><span></span>
+          <svg class="sidebar-toggle-icon" viewBox="0 0 18 14" fill="none" aria-hidden="true"><rect x="1" y="1" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M6 1.7v10.6" stroke="currentColor" stroke-width="1.3"/></svg>
         </button>
         <!-- Rounded New Chat Button on the Left Corner with Simple Chat Icon -->
         <button class="round-chat-btn" id="new" title="New Chat">
@@ -176,7 +185,7 @@
             <line x1="9" y1="11" x2="15" y2="11"></line>
           </svg>
         </button>
-        <span class="app-brand-mark" aria-hidden="true">+</span>
+        <span class="app-brand-mark brand-mark-crop" aria-hidden="true"><img src="assets/mrdoc-health-logo.svg" alt=""></span>
         <div class="brand-title">Mr.Doc</div>
         <button class="subtle-guide-btn top-guidance-btn" id="subtle-guide-btn" data-page="guide" data-label="Health guidance" aria-label="Health guidance">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6m-5 3h4m-2-19a7 7 0 0 0-4.2 12.6c.8.6 1.2 1.4 1.2 2.4h6c0-1 .4-1.8 1.2-2.4A7 7 0 0 0 12 2Z"/></svg>
@@ -223,10 +232,21 @@
             <button data-lang="ta">தமிழ் (Tamil)</button>
           </div>
         </div>
-        <button class="top-my-health-btn" id="top-my-health-btn" data-page="me" data-label="My Health" aria-label="My Health">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-          <span class="user-meta-single" data-i18n="myHealth">My Health</span>
-        </button>
+        <button class="top-feature-btn top-qr-btn" id="top-qr-btn" type="button" aria-label="Open my health QR">My QR</button>
+        <button class="top-feature-btn" id="top-appointments-btn" data-page="appointments" type="button">Appointments</button>
+        <div class="profile-menu-wrap">
+          <button class="top-my-health-btn" id="top-my-health-btn" data-page="me" data-label="My Health" aria-label="My Health" aria-haspopup="menu" aria-expanded="false">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
+            <span class="user-meta-single" data-i18n="myHealth">My Health</span><span aria-hidden="true">▾</span>
+          </button>
+          <button class="reminder-bell-btn" id="reminders-button" type="button" data-open-reminders title="Medicine reminders" aria-label="Open medicine reminders">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+          </button>
+          <div class="profile-mini-menu" id="profile-mini-menu" role="menu" hidden>
+            <button type="button" data-profile-go="me" role="menuitem">My profile</button>
+            <button type="button" data-profile-go="family" role="menuitem">My family</button>
+          </div>
+        </div>
         <div id="top-page-nav" style="display: none">
           <button class="btn-back-chat" id="btn-back-chat">
             ← Back to Chat
@@ -243,7 +263,7 @@
       aria-label="Recent chats and navigation"
     >
       <div class="drawer-header">
-        <div class="brand"><span class="drawer-brand-mark">+</span><span>Mr.Doc</span><small>Health Copilot</small></div>
+        <div class="brand"><span class="drawer-brand-mark brand-mark-crop"><img src="assets/mrdoc-health-logo.svg" alt=""></span><span>Mr.Doc</span><small>Health Copilot</small></div>
         <button class="drawer-close" id="drawer-close" aria-label="Close menu">
           ✕
         </button>
@@ -261,6 +281,8 @@
       <div class="drawer-chats-sec">
         <button class="drawer-chats-trigger" id="drawer-chats-toggle" type="button" aria-label="Recent chats" aria-controls="drawer-chats-list" aria-expanded="false" data-label="Recent chats">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/><path d="M3.5 7.5 6 8l-.5-2.5"/></svg>
+          <span class="drawer-chats-label" data-i18n="recentChats">Recent chats</span>
+          <span class="drawer-chats-caret" aria-hidden="true">⌄</span>
         </button>
         <div class="sec-label" data-i18n="recentChats">Recent chats</div>
         <div id="drawer-chats-list"></div>
@@ -276,9 +298,11 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12h6m-6 4h6"/></svg>
           <span class="nav-label" data-i18n="records">Medical records</span>
         </button>
+        <button class="nav-item" data-page="appointments" data-label="Appointments" aria-label="Appointments"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3m-3 3h6"/></svg><span class="nav-label">Appointments</span></button>
         <button class="nav-item" data-page="timeline" data-label="Health timeline" aria-label="Health timeline"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span class="nav-label" data-i18n="timeline">Health timeline</span></button>
         <button class="nav-item body-check-nav" data-page="body" data-label="Full Body Check" aria-label="Full Body Check"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.4"/><path d="M12 8v6m-4-3 4-2 4 2m-4 3-3 6m3-6 3 6"/></svg><span class="nav-label" data-i18n="bodyCheck">Full Body Check</span><small data-i18n="bodyCheckHint">See marked health areas</small></button>
         <button class="nav-item" data-page="details" data-label="Health details" aria-label="Health details"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 8.8c0 5.2-8.5 10.2-8.5 10.2S3.5 14 3.5 8.8A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 8.5 1.8Z"/></svg><span class="nav-label" data-i18n="details">Health details</span></button>
+        <button class="nav-item" data-page="family-records" data-label="Family health records" aria-label="Family health records"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6m1 9a5 5 0 0 1 3 4.5"/></svg><span class="nav-label">Family health records</span></button>
       </div>
 
       <!-- Account actions stay pinned at the bottom of the drawer. -->
@@ -405,6 +429,15 @@
       <div class="page-view" id="view-body">
         <div class="full-page-container" id="page-body-content"></div>
       </div>
+      <div class="page-view" id="view-appointments">
+        <div class="full-page-container" id="page-appointments-content"></div>
+      </div>
+      <div class="page-view" id="view-family">
+        <div class="full-page-container" id="page-family-content"></div>
+      </div>
+      <div class="page-view" id="view-family-records">
+        <div class="full-page-container" id="page-family-records-content"></div>
+      </div>
     </main>
 
           <!-- Upload Retry Banner -->
@@ -437,8 +470,7 @@
       <section class="ocr-review-dialog" role="dialog" aria-modal="true" aria-labelledby="ocr-review-title" tabindex="-1">
         <div class="ocr-review-dialog-head"><div><span class="health-source-tag">Only unclear details need your attention</span><h2 id="ocr-review-title">Please check these parts</h2><p>Compare each flagged item with the original upload. Clear details are already saved.</p></div><button id="ocr-review-close" type="button" class="btn-sm btn-sec">Review later</button></div>
         <div id="ocr-review-content"></div>
-        <label class="medicine-confirm-check"><input type="checkbox" id="ocr-review-ack">I checked the unclear details against the original.</label>
-        <div class="ocr-review-actions"><button id="ocr-review-save" type="button" class="btn-sm btn-pri" disabled>Save corrections</button></div>
+        <div class="ocr-review-actions"><button id="ocr-review-save" type="button" class="btn-sm btn-pri">Save corrections</button></div>
       </section>
     </div>
 
@@ -447,9 +479,88 @@
       ><button id="dismiss-status" aria-label="Dismiss message">×</button>
     </div>
 
+    <div class="voice-recording-overlay" id="voice-recording-overlay" hidden>
+      <section class="voice-recording-dialog" role="dialog" aria-modal="true" aria-labelledby="voice-recording-title" aria-describedby="voice-recording-status">
+        <div class="voice-recording-orb" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg>
+        </div>
+        <span class="voice-recording-live"><i></i> LIVE</span>
+        <h2 id="voice-recording-title">Speak to Mr.Doc</h2>
+        <p id="voice-recording-status" role="status" aria-live="polite">Listening. Speak now.</p>
+        <div class="voice-recording-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <p class="voice-recording-hint" id="voice-recording-hint">Your words will be transcribed and sent when you finish.</p>
+        <div class="voice-recording-actions">
+          <button class="btn-sm btn-sec" id="voice-recording-cancel" type="button">Cancel</button>
+          <button class="btn-sm btn-pri" id="voice-recording-finish" type="button">Finish &amp; send</button>
+        </div>
+      </section>
+    </div>
 
+    <div class="reminders-overlay" id="reminders-overlay" hidden>
+      <section class="reminders-dialog" role="dialog" aria-modal="true" aria-labelledby="reminders-title">
+        <button class="reminders-close" id="reminders-close" type="button" aria-label="Close reminders">×</button>
+        <span class="health-source-tag">Saved on this device</span>
+        <h2 id="reminders-title">Medicine reminders</h2>
+        <p class="reminders-intro">Your scheduled medicine reminders stay saved when you refresh this page.</p>
+        <div id="reminders-list" class="reminders-list" role="list" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <div class="medicine-reminder-setup-overlay" id="medicine-reminder-setup-overlay" hidden>
+      <form class="medicine-reminder-setup" id="medicine-reminder-setup" role="dialog" aria-modal="true" aria-labelledby="medicine-reminder-setup-title">
+        <button class="reminders-close" id="medicine-reminder-setup-close" type="button" aria-label="Close reminder setup">×</button>
+        <span class="health-source-tag">Saved on this device</span>
+        <h2 id="medicine-reminder-setup-title">Set medicine reminder</h2>
+        <p class="reminders-intro" id="medicine-reminder-medicine-name"></p>
+        <p class="medicine-reminder-safety" id="medicine-reminder-safety">Choose reminder times that match your prescription or your clinician’s instructions. This reminder does not set or change your dose. Alerts run while Mr.Doc is open in this browser.</p>
+        <label>Repeat
+          <select id="medicine-reminder-repeat"><option value="daily">Every day</option><option value="weekly">Selected days</option></select>
+        </label>
+        <fieldset class="medicine-reminder-days" id="medicine-reminder-days" hidden>
+          <legend>Reminder days</legend>
+          <label><input type="checkbox" value="1"> Mon</label><label><input type="checkbox" value="2"> Tue</label><label><input type="checkbox" value="3"> Wed</label><label><input type="checkbox" value="4"> Thu</label><label><input type="checkbox" value="5"> Fri</label><label><input type="checkbox" value="6"> Sat</label><label><input type="checkbox" value="0"> Sun</label>
+        </fieldset>
+        <label>Reminder time</label>
+        <div class="reminder-time-selects" aria-label="Reminder time">
+          <select id="medicine-reminder-hour" required aria-label="Hour"><option value="">Hour</option></select>
+          <select id="medicine-reminder-minute" required aria-label="Minute"><option value="">Minute</option></select>
+          <select id="medicine-reminder-period" required aria-label="AM or PM"><option value="">AM/PM</option><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+        <div class="medicine-reminder-date-row"><label>Start date <input id="medicine-reminder-start" type="date" required></label><label>End date <span>(optional)</span><input id="medicine-reminder-end" type="date"></label></div>
+        <div class="medicine-reminder-setup-actions"><button class="btn-sm btn-sec" id="medicine-reminder-setup-cancel" type="button">Cancel</button><button class="btn-sm btn-pri" type="submit">Save reminder</button></div>
+      </form>
+    </div>
+
+    <div class="medicine-alert-overlay" id="medicine-alert-overlay" hidden>
+      <section class="medicine-alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="medicine-alert-title" aria-describedby="medicine-alert-message">
+        <span class="medicine-alert-icon" aria-hidden="true">🔔</span>
+        <span class="health-source-tag">Scheduled reminder</span>
+        <h2 id="medicine-alert-title">Medicine reminder</h2>
+        <p id="medicine-alert-message"></p>
+        <div class="medicine-alert-prescription" id="medicine-alert-prescription" hidden></div>
+        <p class="medicine-alert-safety">Follow the prescription. This reminder does not confirm or change your dose.</p>
+        <div class="medicine-alert-actions"><button class="btn-sm btn-sec" id="medicine-alert-dismiss" type="button">Dismiss</button><button class="btn-sm btn-sec" id="medicine-alert-taken" type="button" hidden>Mark as taken</button><button class="btn-sm btn-pri" id="medicine-alert-open-record" type="button">Open prescription</button></div>
+      </section>
+    </div>
+
+    <div class="health-qr-overlay" id="health-qr-overlay" hidden>
+      <section class="health-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="health-qr-title">
+        <button class="health-qr-close" id="health-qr-close" type="button" aria-label="Close health QR">×</button>
+        <span class="health-source-tag">Patient-controlled sharing</span>
+        <h2 id="health-qr-title">My health QR</h2>
+        <p>Show this QR only to a trusted care provider. It identifies this Mr.Doc profile; sending reports back requires a connected hospital service.</p>
+        <canvas id="health-qr-canvas" width="240" height="240" aria-label="Health profile QR code"></canvas>
+        <strong id="health-qr-name"></strong>
+        <small id="health-qr-id"></small>
+        <button class="btn-sm btn-sec" id="health-qr-reports" type="button">Check your reports</button>
+      </section>
+    </div>
+
+
+    <script src="assets/vendor/qrcode.min.js"></script>
     <script src="health-data.js"></script>
-    <script src="app.js?v=sidebar-header-v3-20261023"></script>
+    <script src="app.js?v=password-reset-20261024"></script>
+    <script src="body3d.js?v=anatomy-center-contrast-v3-20261024"></script>
     <script>
       // Keep the illustrated stage as the default. Add ?preview3d=1 when
       // explicitly reviewing the GLB character through a local server.
